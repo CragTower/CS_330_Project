@@ -5,20 +5,19 @@
 **	screen using OpenGL.
 */
 
-#include <iostream>         // cout, cerr
-#include <cstdlib>          // EXIT_FAILURE
+#include <iostream>         
+#include <cstdlib>          
 #include <vector>
-#include <GL/glew.h>        // GLEW library
-#include <GLFW/glfw3.h>     // GLFW library
+#include <GL/glew.h>        
+#include <GLFW/glfw3.h>     
 
-// GLM Math Header inclusions
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
 using namespace std; // Standard namespace
 
-/*Shader program Macro*/
+/* Shader program Macro */
 #ifndef GLSL
 #define GLSL(Version, Source) "#version " #Version " core \n" #Source
 #endif
@@ -26,13 +25,13 @@ using namespace std; // Standard namespace
 // Unnamed namespace
 namespace
 {
-    const char* const WINDOW_TITLE = "Tutorial 3.4"; // Macro for window title
+    const char* const WINDOW_TITLE = "CS_330_Project_Milestone_3.5"; // Macro for window title
 
     // Variables for window width and height
     const int WINDOW_WIDTH = 800;
     const int WINDOW_HEIGHT = 600;
 
-    // Stores the GL data relative to a given mesh
+    // Creates a structure to hold the Mesh data
     struct GLMesh
     {
         GLuint vao;         // Handle for the vertex array object
@@ -40,40 +39,38 @@ namespace
         GLuint nIndices;    // Number of indices of the mesh
     };
 
-    // Main GLFW window
+    // Global variable to hold main GLFW window
     GLFWwindow* gWindow = nullptr;
-    // Triangle mesh data
+    // Global variable to hold the different instances of Mesh data
     GLMesh gMesh1;
     GLMesh gMesh2;
-    // Shader program
+    // Global variable to hold Shader program
     GLuint gProgramId;
-
 }
 
-/* User-defined Function prototypes to:
- * initialize the program, set the window size,
- * redraw graphics on the window when resized,
- * and render graphics on the screen
- */
+
+// User defined functions
 bool UInitialize(int, char* [], GLFWwindow** window);
 void UResizeWindow(GLFWwindow* window, int width, int height);
 void generateVAO_VBOS(GLMesh& mesh);
 void UProcessInput(GLFWwindow* window);
 void drawCylinder(GLMesh& mesh, GLfloat height, GLfloat radius, int numSlices);
+void drawPyramid(GLMesh& mesh);
 void UDestroyMesh(GLMesh& mesh);
-void URender(GLMesh& mesh);
+void URender(GLMesh& mesh, GLfloat _scale, GLfloat rotX, GLfloat rotY, GLfloat rotZ, GLfloat translX, GLfloat translY, GLfloat translZ);
 bool UCreateShaderProgram(const char* vtxShaderSource, const char* fragShaderSource, GLuint& programId);
 void UDestroyShaderProgram(GLuint programId);
 
 
-/* Vertex Shader Source Code*/
+// Vertex Shader Code (GLSL)
+// _________________________
 const GLchar* vertexShaderSource = GLSL(440,
 layout(location = 0) in vec3 position; // Vertex data from Vertex Attrib Pointer 0
 layout(location = 1) in vec4 color;  // Color data from Vertex Attrib Pointer 1
 
 out vec4 vertexColor; // variable to transfer color data to the fragment shader
 
-//Global variables for the  transform matrices
+//Global variables for the transform matrices
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
@@ -86,7 +83,8 @@ void main()
 );
 
 
-/* Fragment Shader Source Code*/
+// Fragment Shader Code (GLSL)
+// ___________________________
 const GLchar* fragmentShaderSource = GLSL(440,
 in vec4 vertexColor; // Variable to hold incoming color data from vertex shader
 
@@ -99,95 +97,96 @@ void main()
 );
 
 
+// Main entry into program
+// _______________________
 int main(int argc, char* argv[])
 {
     if (!UInitialize(argc, argv, &gWindow))
         return EXIT_FAILURE;
 
-    // Create the mesh
-    //UCreateMesh(gMesh, 1.0f, 0.5f, 100); // Calls the function to create the Vertex Buffer Object
-
     // Create the shader program
     if (!UCreateShaderProgram(vertexShaderSource, fragmentShaderSource, gProgramId))
         return EXIT_FAILURE;
 
-    // Sets the background color of the window to black (it will be implicitely used by glClear)
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-
+    // Generates the VAO's and VBO's for each Mesh created
     generateVAO_VBOS(gMesh1);
     generateVAO_VBOS(gMesh2);
 
-
     // render loop
-    // -----------
+    // ___________
     while (!glfwWindowShouldClose(gWindow))
     {
         // input
-        // -----
         UProcessInput(gWindow);
 
-        // Enable z-depth
+        // Enable z-depth to render closest Z coords
         glEnable(GL_DEPTH_TEST);
 
         // Clear the frame and z buffers
         glClearColor(0.0f, 0.3f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        drawCylinder(gMesh1, 1.2f, 0.5f, 100);
-        drawCylinder(gMesh2, 1.7f, 0.1f, 80);
+        // Sends data to GPU, draws cylinder on back buffer, and manages obj matrices
+        drawCylinder(gMesh1, 1.2f, 0.1f, 100);
+        URender(gMesh1, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+       
+        // Sends data to GPU, draws pyramid on back buffer, and manages obj matrices
+        drawPyramid(gMesh2);
+        URender(gMesh2, 0.19f, 0.0f, 1.0f, 0.0f, 0.0f, 0.6f, 0.0f);
         
-        // Render this frame
-        
-        // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
-        glfwSwapBuffers(gWindow);    // Flips the the back buffer with the front buffer every frame.
+        // Swaps front buffer with back buffer 
+        glfwSwapBuffers(gWindow);
 
+        // Polls events (monitors Input/Output events such as keystrokes or mouse movements)
         glfwPollEvents();
     }
 
     // Release mesh data
     UDestroyMesh(gMesh1);
     UDestroyMesh(gMesh2);
-    //DestroyMesh();
 
     // Release shader program
     UDestroyShaderProgram(gProgramId);
 
-    exit(EXIT_SUCCESS); // Terminates the program successfully
+    // Terminates the program successfully
+    exit(EXIT_SUCCESS); 
 }
 
 
 // Initialize GLFW, GLEW, and create a window
+// __________________________________________
 bool UInitialize(int argc, char* argv[], GLFWwindow** window)
 {
     // GLFW: initialize and configure
-    // ------------------------------
     glfwInit();
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 4);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);                  // Highest version of opengl allowed
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 4);                  // Lowest version of opengl allowed
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // Tells which profile of opengl we will use (modern functions)
 
 #ifdef __APPLE__
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
 
     // GLFW: window creation
-    // ---------------------
     * window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE, NULL, NULL);
+    // Fail check for window
     if (*window == NULL)
     {
         std::cout << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
         return false;
     }
+    // Makes the window current
     glfwMakeContextCurrent(*window);
+    // Handles the frame buffer during window resize
     glfwSetFramebufferSizeCallback(*window, UResizeWindow);
 
     // GLEW: initialize
-    // ----------------
     // Note: if using GLEW version 1.13 or earlier
     glewExperimental = GL_TRUE;
     GLenum GlewInitResult = glewInit();
 
+    // Fail check for GLEW init
     if (GLEW_OK != GlewInitResult)
     {
         std::cerr << glewGetErrorString(GlewInitResult) << std::endl;
@@ -201,231 +200,244 @@ bool UInitialize(int argc, char* argv[], GLFWwindow** window)
 }
 
 
-// process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
+
+// Processes input from user; monitors keystrokes and mouse movement and processes accordingly
+// ___________________________________________________________________________________________
 void UProcessInput(GLFWwindow* window)
 {
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)      // If ESCAPE key is pressed close program
         glfwSetWindowShouldClose(window, true);
 }
 
 
-// glfw: whenever the window size changed (by OS or user resize) this callback function executes
+
+// When window is resized the viewport is also changed
+// ___________________________________________________
 void UResizeWindow(GLFWwindow* window, int width, int height)
 {
     glViewport(0, 0, width, height);
 }
 
 
+
 // Functioned called to render a frame
-void URender(GLMesh& mesh)
+// ___________________________________
+void URender(GLMesh& mesh, GLfloat _scale, GLfloat rotX, GLfloat rotY, GLfloat rotZ, GLfloat translX, GLfloat translY, GLfloat translZ)
 {
     
-
-    // 1. Scales the object by 2
-    glm::mat4 scale = glm::scale(glm::vec3(2.0f, 2.0f, 2.0f));
-    // 2. Rotates shape by 15 degrees in the x axis
-    glm::mat4 rotation = glm::rotate((float)glfwGetTime() * glm::radians(90.0f), glm::vec3(1.0, 1.0f, 0.0f));
-    // 3. Place object at the origin
-    glm::mat4 translation = glm::translate(glm::vec3(0.0f, 0.0f, 0.0f));
-    // Model matrix: transformations are applied right-to-left order
+    // Model matrix
+    // Creates matrix for scaling object
+    glm::mat4 scale = glm::scale(glm::vec3(_scale, _scale, _scale));
+    // Creates matrix for rotating object
+    glm::mat4 rotation = glm::rotate((float)glfwGetTime() * glm::radians(90.0f), glm::vec3(rotX, rotY, rotZ));
+    // Creates matrix for moving object (x, y, or z location)
+    glm::mat4 translation = glm::translate(glm::vec3(translX, translY, translZ));
+    // Creates the model matrix by applying the object manipulations
     glm::mat4 model = translation * rotation * scale;
 
-    // Transforms the camera: move the camera back (z axis)
-    glm::mat4 view = glm::translate(glm::vec3(0.0f, 0.0f, -5.0f));
+    // View matrix
+    // Moves the "camera" (x, y, or z)
+    glm::mat4 view = glm::translate(glm::vec3(0.0f, 0.0f, -2.0f));
 
-    // Creates a perspective projection
+    // Projection matrix
+    // Creates a perspective projection (gives depth to the 2D screen locations)
     glm::mat4 projection = glm::perspective(45.0f, (GLfloat)WINDOW_WIDTH / (GLfloat)WINDOW_HEIGHT, 0.1f, 100.0f);
 
     // Set the shader to be used
     glUseProgram(gProgramId);
 
-    // Retrieves and passes transform matrices to the Shader program
+    // Retrives variable names from current shader program and assigns them to local variables
     GLint modelLoc = glGetUniformLocation(gProgramId, "model");
     GLint viewLoc = glGetUniformLocation(gProgramId, "view");
     GLint projLoc = glGetUniformLocation(gProgramId, "projection");
 
+    // Sends matrix manipulation information back to GPU
     glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
     glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
 
+    // Makes mesh in argument the current mesh
     glBindVertexArray(mesh.vao);
-    glDrawElements(GL_TRIANGLES, mesh.nIndices, GL_UNSIGNED_INT, NULL); // Draws the triangle
-    //
+    // Draws the current mesh data onto the back buffer
+    glDrawElements(GL_TRIANGLES, mesh.nIndices, GL_UNSIGNED_INT, NULL);
+    // Unbinds the current mesh so as to not alter it
     glBindVertexArray(0);
-
-    // Activate the VBOs contained within the mesh's VAO
-    //glBindVertexArray(gMesh2.vao);
-
-    // Draws the triangles
-    //glDrawElements(GL_TRIANGLES, gMesh2.nIndices, GL_UNSIGNED_INT, NULL); // Draws the triangle
-
-    // Deactivate the Vertex Array Object
-    //glBindVertexArray(0);
-
-    
-
 }
 
 
-// Implements the UCreateMesh function
+
+
+/*  
+    -------------------------------------
+    Calculates vertices for cylinder
+    Maps the indices for vertex triangles
+    Sends data to GPU for later use
+    -------------------------------------
+*/
 void drawCylinder(GLMesh& mesh, GLfloat height, GLfloat radius, int numSlices)
 {
-    //GLMesh& mesh,
-    
-
+    // Creates vector for calculated points for a 2D circle
     std::vector<GLfloat> circleArray;
+    // Creates vector for vertex storage of whole cylinder
     std::vector<GLfloat> vertexArray;
     
-
+    // Determines how many slices around a circle
     float sectorStep = 2.0f * glm::pi<float>() / numSlices;
     float sectorAngle;
 
     for (int i = 0; i <= numSlices; i++)
     {
-        sectorAngle = i * sectorStep;
+        sectorAngle = i * sectorStep;               // Determines angle
         circleArray.push_back(cos(sectorAngle));    // x
-        circleArray.push_back(sin(sectorAngle));    // y
-        circleArray.push_back(0);                   // z
+        circleArray.push_back(0);                   // y
+        circleArray.push_back(sin(sectorAngle));    // z
     }
 
+    // Creates top and bottom vertices for side of cylinder
     for (int i = 0; i < 2; ++i)
     {
-        float h = (-height / 2.0f) + (i * height);
-        float t = 1.0f - i;
+        float h = (-height / 2.0f) + (i * height);  // Determines height
 
         for (int j = 0, k = 0; j <= numSlices; j++, k += 3)
         {
-            float ux = circleArray[k];
-            float uy = circleArray[k + 1];
-            float uz = circleArray[k + 2];
+            float ux = circleArray[k];          // x location holder
+            float uy = circleArray[k + 1];      // y location holder
+            float uz = circleArray[k + 2];      // z location holder
             // position vector
-            vertexArray.push_back(ux * radius);
-            vertexArray.push_back(uy * radius);
+            vertexArray.push_back(ux * radius); 
             vertexArray.push_back(h);
+            vertexArray.push_back(uz * radius); 
         }
     }
 
+    // Determinces the center point for bottom and top circles for cylinder
+    // Will be used for index vertex creation
     int baseCenterIndex = (int)vertexArray.size() / 3;
     int topCenterIndex = baseCenterIndex + numSlices + 1;
 
+    // Creates top and bottom vertices for the "lids" of cylinder
     for (int i = 0; i < 2; i++)
     {
-        float h = -height / 2.0f + i * height;
-        float nz = -1 + i * 2;
+        float h = -height / 2.0f + i * height;      // determines height
 
         // Center point
         vertexArray.push_back(0);
-        vertexArray.push_back(0);
         vertexArray.push_back(h);
+        vertexArray.push_back(0); 
 
         for (int j = 0, k = 0; j < numSlices; ++j, k += 3)
         {
-            float ux = circleArray[k];
-            float uy = circleArray[k + 1];
+            float ux = circleArray[k];      // x location holder
+            float uz = circleArray[k + 2];  // z location holder
             // Position vector
             vertexArray.push_back(ux * radius);
-            vertexArray.push_back(uy * radius);
             vertexArray.push_back(h);
+            vertexArray.push_back(uz * radius); 
         }
     }
 
-    // generate CCW index list of cylinder triangles
+    // Generate vector for indices mapping
     std::vector<int> indices;
-    int k1 = 0;                         // 1st vertex index at base
+    int k1 = 0;                       // 1st vertex index at base
     int k2 = numSlices + 1;           // 1st vertex index at top
 
-    // indices for the side surface
+    // Indices for the side surface
     for (int i = 0; i < numSlices; ++i, ++k1, ++k2)
     {
         // 2 triangles per sector
         // k1 => k1+1 => k2
         indices.push_back(k1);
-        indices.push_back(k1 + 1);
+        indices.push_back(k1 + 1); 
         indices.push_back(k2);
 
         // k2 => k1+1 => k2+1
         indices.push_back(k2);
         indices.push_back(k1 + 1);
-        indices.push_back(k2 + 1);
+        indices.push_back(k2 + 1); 
     }
 
-    // indices for the base surface
-    //NOTE: baseCenterIndex and topCenterIndices are pre-computed during vertex generation
-    //      please see the previous code snippet
+    // Indices for the base surface
     for (int i = 0, k = baseCenterIndex + 1; i < numSlices; ++i, ++k)
     {
         if (i < numSlices - 1)
         {
             indices.push_back(baseCenterIndex);
-            indices.push_back(k + 1);
+            indices.push_back(k + 1); 
             indices.push_back(k);
         }
         else // last triangle
         {
             indices.push_back(baseCenterIndex);
             indices.push_back(baseCenterIndex + 1);
-            indices.push_back(k);
+            indices.push_back(k); 
         }
     }
 
-    // indices for the top surface
+    // Indices for the top surface
     for (int i = 0, k = topCenterIndex + 1; i < numSlices; ++i, ++k)
     {
         if (i < numSlices - 1)
         {
             indices.push_back(topCenterIndex);
-            indices.push_back(k);
+            indices.push_back(k); 
             indices.push_back(k + 1);
         }
         else // last triangle
         {
             indices.push_back(topCenterIndex);
             indices.push_back(k);
-            indices.push_back(topCenterIndex + 1);
+            indices.push_back(topCenterIndex + 1); 
         }
     }
 
-
+    // Position range of x, y, z coords in vector
     const GLuint floatsPerVertex = 3;
+    // Position range of color coords in vector
     //const GLuint floatsPerColor = 4;
 
-    
+    // Binds the mesh to make it current
     glBindVertexArray(mesh.vao);
 
-    // Create 2 buffers: first one for the vertex data; second one for the indices
-    
-    glBindBuffer(GL_ARRAY_BUFFER, mesh.vbos[0]); // Activates the buffer
-    glBufferData(GL_ARRAY_BUFFER, vertexArray.size() * sizeof(GLfloat), vertexArray.data(), GL_STATIC_DRAW); // Sends vertex or coordinate data to the GPU
+    // Binds the buffer to make it current
+    glBindBuffer(GL_ARRAY_BUFFER, mesh.vbos[0]);
+    // Sends vertex vector data to GPU
+    glBufferData(GL_ARRAY_BUFFER, vertexArray.size() * sizeof(GLfloat), vertexArray.data(), GL_STATIC_DRAW);
 
+    // Calculates index size for later use
     mesh.nIndices = indices.size();
+    // Binds the buffer to make it current
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.vbos[1]);
+    // Sends index vector data to GPU
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(int), indices.data(), GL_STATIC_DRAW);
 
-    // Strides between vertex coordinates is 6 (x, y, z, r, g, b, a). A tightly packed stride is 0.
-    GLint stride = sizeof(float) * floatsPerVertex;// The number of floats before each
+    // Number of floats between each vertex point (how many bytes between vertex locations in vector
+    GLint stride = sizeof(float) * floatsPerVertex;
 
-    // Create Vertex Attribute Pointers
+    // Create Vertex Attribute Pointers for use in shader program
     glVertexAttribPointer(0, floatsPerVertex, GL_FLOAT, GL_FALSE, stride, 0);
+    // Enables vertex attrib array starting at index 0
     glEnableVertexAttribArray(0);
 
+    // Unbinds vertex array so as to not modify it anymore
     glBindVertexArray(0);
-
-    //glVertexAttribPointer(1, 0, GL_FLOAT, GL_FALSE, stride, (char*)(sizeof(float) * floatsPerVertex));
-    //glEnableVertexAttribArray(1);
-
-    URender(mesh);
-    
 }
 
 
+
+// Destryoys Mesh 
+// ______________
 void UDestroyMesh(GLMesh& mesh)
 {
+    // Deletes vao position of mesh
     glDeleteVertexArrays(1, &mesh.vao);
+    // Deletes vbo position of mesh
     glDeleteBuffers(2, mesh.vbos);
 }
 
 
+
 // Implements the UCreateShaders function
+// ______________________________________
 bool UCreateShaderProgram(const char* vtxShaderSource, const char* fragShaderSource, GLuint& programId)
 {
     // Compilation and linkage error reporting
@@ -439,13 +451,12 @@ bool UCreateShaderProgram(const char* vtxShaderSource, const char* fragShaderSou
     GLuint vertexShaderId = glCreateShader(GL_VERTEX_SHADER);
     GLuint fragmentShaderId = glCreateShader(GL_FRAGMENT_SHADER);
 
-    // Retrive the shader source
+    // Retrieve the shader source code and assigns it to variables in first argument slot
     glShaderSource(vertexShaderId, 1, &vtxShaderSource, NULL);
     glShaderSource(fragmentShaderId, 1, &fragShaderSource, NULL);
 
     // Compile the vertex shader, and print compilation errors (if any)
-    glCompileShader(vertexShaderId); // compile the vertex shader
-    // check for shader compile errors
+    glCompileShader(vertexShaderId);
     glGetShaderiv(vertexShaderId, GL_COMPILE_STATUS, &success);
     if (!success)
     {
@@ -455,8 +466,8 @@ bool UCreateShaderProgram(const char* vtxShaderSource, const char* fragShaderSou
         return false;
     }
 
-    glCompileShader(fragmentShaderId); // compile the fragment shader
-    // check for shader compile errors
+    // Compile the fragment shader, and print compilation errors (if any)
+    glCompileShader(fragmentShaderId); 
     glGetShaderiv(fragmentShaderId, GL_COMPILE_STATUS, &success);
     if (!success)
     {
@@ -470,8 +481,8 @@ bool UCreateShaderProgram(const char* vtxShaderSource, const char* fragShaderSou
     glAttachShader(programId, vertexShaderId);
     glAttachShader(programId, fragmentShaderId);
 
-    glLinkProgram(programId);   // links the shader program
-    // check for linking errors
+    // Links the shader program and checks for compile errors
+    glLinkProgram(programId);
     glGetProgramiv(programId, GL_LINK_STATUS, &success);
     if (!success)
     {
@@ -481,19 +492,94 @@ bool UCreateShaderProgram(const char* vtxShaderSource, const char* fragShaderSou
         return false;
     }
 
-    glUseProgram(programId);    // Uses the shader program
+    // Uses the shader program
+    glUseProgram(programId); 
 
     return true;
 }
 
 
+
+// Destroys the shader program
+// ___________________________
 void UDestroyShaderProgram(GLuint programId)
 {
     glDeleteProgram(programId);
 }
 
+
+
+// Generates the VAO's and VBO's for given mesh
+// ____________________________________________
 void generateVAO_VBOS(GLMesh& mesh)
 {
     glGenVertexArrays(1, &mesh.vao); // we can also generate multiple VAOs or buffers at the same time
     glGenBuffers(2, mesh.vbos);
+}
+
+
+
+/*
+    -------------------------------------
+    Calculates vertices for pyramid
+    Maps the indices for vertex triangles
+    Sends data to GPU for later use
+    -------------------------------------
+*/
+void drawPyramid(GLMesh& mesh)
+{
+    // Vertex coords
+    vector<GLfloat> vertices =
+    {
+            // Vertices			        // Colors (r, g, b)
+        -0.5f,  0.0f,  0.5f,        //1.0f, 0.0f, 0.0f, 	// Lower left corner
+        -0.5f,  0.0f, -0.5f,        //0.0f, 1.0f, 0.0f, 	// Upper left corner
+         0.5f,	0.0f, -0.5f,        //0.0f, 0.0f, 1.0f, 	// Upper right corner
+         0.5f,  0.0f,  0.5f,        //0.3f, 0.8f, 0.5f, 	// Lower right corner
+         0.0f,  0.8f,  0.0f,        //0.3f, 0.8f, 0.5f 	// Lower right corner
+    };
+
+    // Indices combinations that make up shape
+    vector<GLuint> indices =
+    {
+        0, 1, 2,
+        0, 2, 3,
+        0, 1, 4,
+        1, 2, 4,
+        2, 3, 4,
+        3, 0, 4
+    };
+
+    // Position range of x, y, z coords in vector
+    const GLuint floatsPerVertex = 3;
+    //const GLuint floatsPerColor = 4;
+
+    // Binds the mesh to make it current
+    glBindVertexArray(mesh.vao);
+
+    // Binds the 1st buffer of mesh to make it current
+    glBindBuffer(GL_ARRAY_BUFFER, mesh.vbos[0]);
+    // Sends the vertex data to GPU
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(GLfloat), vertices.data(), GL_STATIC_DRAW);
+
+    // Calculates number of indices in vector for later use
+    mesh.nIndices = indices.size();
+    // Binds the 2nd buffer of mesh to make it current 
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.vbos[1]);
+    // Sends the index data to GPU
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(int), indices.data(), GL_STATIC_DRAW);
+
+    // Number of floats between each vertex point (how many bytes between vertex locations in vector)
+    GLint stride = sizeof(float) * floatsPerVertex;
+
+    // Create Vertex Attribute Pointers for use in shader program
+    glVertexAttribPointer(0, floatsPerVertex, GL_FLOAT, GL_FALSE, stride, 0);
+    // Enables vertex attrib array starting of position 0
+    glEnableVertexAttribArray(0);
+
+    // Unbinds the mesh so as to not modify it anymore
+    glBindVertexArray(0);
+
+    //glVertexAttribPointer(1, 0, GL_FLOAT, GL_FALSE, stride, (char*)(sizeof(float) * floatsPerVertex));
+    //glEnableVertexAttribArray(1);
 }
