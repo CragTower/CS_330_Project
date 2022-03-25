@@ -1,8 +1,8 @@
 /*
 **	Justin Holmes
 **	Computer Graphics CS-330
-**	The purpose of this program is to be able to draw a pyramid to the
-**	screen using OpenGL.
+**	The purpose of this program is to draw and render a 3D environment
+**	This update includes a cylinder with a pyramid to resemble a pen
 */
 
 #include <iostream>         
@@ -46,6 +46,21 @@ namespace
     GLMesh gMesh2;
     // Global variable to hold Shader program
     GLuint gProgramId;
+
+    // Camera position variables
+    glm::vec3 cameraPos     = glm::vec3(0.0f, 0.0f,  3.0f);
+    glm::vec3 cameraFront   = glm::vec3(0.0f, 0.0f, -1.0f);
+    glm::vec3 cameraUp      = glm::vec3(0.0f, 1.0f,  0.0f);
+    
+    bool firstMouse = true;     // Value to reference if this is the first mouse event (program start up)
+    float yaw = -90.0f;         // Set to -90 to offset direction vector
+    float pitch = 0.0f;
+    float lastX = WINDOW_WIDTH / 2.0;
+    float lastY = WINDOW_HEIGHT / 2.0;
+    float fov = 45.0f;
+
+    float deltaTime = 0.0f;
+    float lastFrame = 0.0f;
 }
 
 
@@ -60,6 +75,8 @@ void UDestroyMesh(GLMesh& mesh);
 void URender(GLMesh& mesh, GLfloat _scale, GLfloat rotX, GLfloat rotY, GLfloat rotZ, GLfloat translX, GLfloat translY, GLfloat translZ);
 bool UCreateShaderProgram(const char* vtxShaderSource, const char* fragShaderSource, GLuint& programId);
 void UDestroyShaderProgram(GLuint programId);
+void mouse_callback(GLFWwindow* window, double xposIn, double yposIn);
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 
 
 // Vertex Shader Code (GLSL)
@@ -93,6 +110,7 @@ out vec4 fragmentColor;
 void main()
 {
     fragmentColor = vec4(1.0f, 1.0f, 0.0f, 1.0f);
+    //fragmentColor = vertexColor;
 }
 );
 
@@ -116,6 +134,10 @@ int main(int argc, char* argv[])
     // ___________
     while (!glfwWindowShouldClose(gWindow))
     {
+        float currentFrame = glfwGetTime();
+        deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;
+        
         // input
         UProcessInput(gWindow);
 
@@ -180,6 +202,13 @@ bool UInitialize(int argc, char* argv[], GLFWwindow** window)
     glfwMakeContextCurrent(*window);
     // Handles the frame buffer during window resize
     glfwSetFramebufferSizeCallback(*window, UResizeWindow);
+    // Handles the mouse movement events
+    glfwSetCursorPosCallback(*window, mouse_callback);
+    // Handles the scroll movement events
+    glfwSetScrollCallback(*window, scroll_callback);
+
+    // Tells GLFW to capture our mouse
+    glfwSetInputMode(*window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     // GLEW: initialize
     // Note: if using GLEW version 1.13 or earlier
@@ -207,6 +236,16 @@ void UProcessInput(GLFWwindow* window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)      // If ESCAPE key is pressed close program
         glfwSetWindowShouldClose(window, true);
+
+    const float cameraSpeed = 2.5f * deltaTime;
+    if (glfwGetKey(window, GLFW_KEY_W) || glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+        cameraPos += cameraSpeed * cameraFront;
+    if (glfwGetKey(window, GLFW_KEY_S) || glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+        cameraPos -= cameraSpeed * cameraFront;
+    if (glfwGetKey(window, GLFW_KEY_A) || glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+        cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+    if (glfwGetKey(window, GLFW_KEY_D) || glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+        cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
 }
 
 
@@ -229,7 +268,7 @@ void URender(GLMesh& mesh, GLfloat _scale, GLfloat rotX, GLfloat rotY, GLfloat r
     // Creates matrix for scaling object
     glm::mat4 scale = glm::scale(glm::vec3(_scale, _scale, _scale));
     // Creates matrix for rotating object
-    glm::mat4 rotation = glm::rotate((float)glfwGetTime() * glm::radians(90.0f), glm::vec3(rotX, rotY, rotZ));
+    glm::mat4 rotation = glm::rotate(glm::radians(90.0f), glm::vec3(rotX, rotY, rotZ));
     // Creates matrix for moving object (x, y, or z location)
     glm::mat4 translation = glm::translate(glm::vec3(translX, translY, translZ));
     // Creates the model matrix by applying the object manipulations
@@ -237,11 +276,16 @@ void URender(GLMesh& mesh, GLfloat _scale, GLfloat rotX, GLfloat rotY, GLfloat r
 
     // View matrix
     // Moves the "camera" (x, y, or z)
-    glm::mat4 view = glm::translate(glm::vec3(0.0f, 0.0f, -2.0f));
+    glm::mat4 view = glm::mat4(1.0f); // make sure to initialize matrix to identity matrix first
+    float radius = 3.0f;
+    float camX = static_cast<float>(sin(glfwGetTime()) * radius);
+    float camZ = static_cast<float>(cos(glfwGetTime()) * radius);
+    view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
+    //glm::mat4 view = glm::translate(glm::vec3(0.0f, 0.0f, -2.0f));
 
     // Projection matrix
     // Creates a perspective projection (gives depth to the 2D screen locations)
-    glm::mat4 projection = glm::perspective(45.0f, (GLfloat)WINDOW_WIDTH / (GLfloat)WINDOW_HEIGHT, 0.1f, 100.0f);
+    glm::mat4 projection = glm::perspective(glm::radians(fov), (GLfloat)WINDOW_WIDTH / (GLfloat)WINDOW_HEIGHT, 0.1f, 100.0f);
 
     // Set the shader to be used
     glUseProgram(gProgramId);
@@ -532,11 +576,11 @@ void drawPyramid(GLMesh& mesh)
     vector<GLfloat> vertices =
     {
             // Vertices			        // Colors (r, g, b)
-        -0.5f,  0.0f,  0.5f,        //1.0f, 0.0f, 0.0f, 	// Lower left corner
-        -0.5f,  0.0f, -0.5f,        //0.0f, 1.0f, 0.0f, 	// Upper left corner
-         0.5f,	0.0f, -0.5f,        //0.0f, 0.0f, 1.0f, 	// Upper right corner
-         0.5f,  0.0f,  0.5f,        //0.3f, 0.8f, 0.5f, 	// Lower right corner
-         0.0f,  0.8f,  0.0f,        //0.3f, 0.8f, 0.5f 	// Lower right corner
+        -0.5f,  0.0f,  0.5f,        //1.0f, 0.0f, 0.0f, 1.0f, 	// Lower left corner
+        -0.5f,  0.0f, -0.5f,       // 0.0f, 1.0f, 0.0f, 1.0f, 	// Upper left corner
+         0.5f,	0.0f, -0.5f,       // 0.0f, 0.0f, 1.0f, 1.0f,	// Upper right corner
+         0.5f,  0.0f,  0.5f,      //  0.3f, 0.8f, 0.5f, 1.0f,	// Lower right corner
+         0.0f,  0.8f,  0.0f,       // 0.3f, 0.8f, 0.5f, 1.0f	// Lower right corner
     };
 
     // Indices combinations that make up shape
@@ -577,9 +621,63 @@ void drawPyramid(GLMesh& mesh)
     // Enables vertex attrib array starting of position 0
     glEnableVertexAttribArray(0);
 
+    //glVertexAttribPointer(1, 0, GL_FLOAT, GL_FALSE, stride, (char*)(sizeof(float) * floatsPerVertex));
+    //glEnableVertexAttribArray(1);
+
     // Unbinds the mesh so as to not modify it anymore
     glBindVertexArray(0);
 
-    //glVertexAttribPointer(1, 0, GL_FLOAT, GL_FALSE, stride, (char*)(sizeof(float) * floatsPerVertex));
-    //glEnableVertexAttribArray(1);
+    
+}
+
+
+
+// glfw: whenever the mouse moves, this callback is called
+// -------------------------------------------------------
+void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
+{
+    float xpos = static_cast<float>(xposIn);
+    float ypos = static_cast<float>(yposIn);
+
+    if (firstMouse)
+    {
+        lastX = xpos;
+        lastY = ypos;
+        firstMouse = false;
+    }
+
+    float xoffset = xpos - lastX;
+    float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
+    lastX = xpos;
+    lastY = ypos;
+
+    float sensitivity = 0.05f; // change this value to your liking
+    xoffset *= sensitivity;
+    yoffset *= sensitivity;
+
+    yaw += xoffset;
+    pitch += yoffset;
+
+    // make sure that when pitch is out of bounds, screen doesn't get flipped
+    if (pitch > 89.0f)
+        pitch = 89.0f;
+    if (pitch < -89.0f)
+        pitch = -89.0f;
+
+    glm::vec3 front;
+    front.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+    front.y = sin(glm::radians(pitch));
+    front.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+    cameraFront = glm::normalize(front);
+}
+
+
+
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+{
+    fov -= (float)yoffset;
+    if (fov < 1.0f)
+        fov = 1.0f;
+    if (fov > 45.0f)
+        fov = 45.0f;
 }
