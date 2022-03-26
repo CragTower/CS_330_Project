@@ -44,11 +44,12 @@ namespace
     // Global variable to hold the different instances of Mesh data
     GLMesh gMesh1;
     GLMesh gMesh2;
+    GLMesh gMesh3;
     // Global variable to hold Shader program
     GLuint gProgramId;
 
     // Camera position variables
-    glm::vec3 cameraPos     = glm::vec3(0.0f, 0.0f,  3.0f);
+    glm::vec3 cameraPos     = glm::vec3(0.0f, 1.0f,  3.0f);
     glm::vec3 cameraFront   = glm::vec3(0.0f, 0.0f, -1.0f);
     glm::vec3 cameraUp      = glm::vec3(0.0f, 1.0f,  0.0f);
     
@@ -61,6 +62,8 @@ namespace
 
     float deltaTime = 0.0f;
     float lastFrame = 0.0f;
+    float speed = 0.1f;
+    float cameraSpeed = speed * deltaTime;
 }
 
 
@@ -71,6 +74,7 @@ void generateVAO_VBOS(GLMesh& mesh);
 void UProcessInput(GLFWwindow* window);
 void drawCylinder(GLMesh& mesh, GLfloat height, GLfloat radius, int numSlices);
 void drawPyramid(GLMesh& mesh);
+void drawPlane(GLMesh& mesh);
 void UDestroyMesh(GLMesh& mesh);
 void URender(GLMesh& mesh, GLfloat _scale, GLfloat rotX, GLfloat rotY, GLfloat rotZ, GLfloat translX, GLfloat translY, GLfloat translZ);
 bool UCreateShaderProgram(const char* vtxShaderSource, const char* fragShaderSource, GLuint& programId);
@@ -109,8 +113,10 @@ out vec4 fragmentColor;
 
 void main()
 {
-    fragmentColor = vec4(1.0f, 1.0f, 0.0f, 1.0f);
-    //fragmentColor = vertexColor;
+    if (length(vertexColor) > 0)
+        fragmentColor = vec4(vertexColor);
+    else
+        fragmentColor = vec4(1.0f, 1.0f, 0.0f, 1.0f);
 }
 );
 
@@ -129,6 +135,7 @@ int main(int argc, char* argv[])
     // Generates the VAO's and VBO's for each Mesh created
     generateVAO_VBOS(gMesh1);
     generateVAO_VBOS(gMesh2);
+    generateVAO_VBOS(gMesh3);
 
     // render loop
     // ___________
@@ -155,6 +162,10 @@ int main(int argc, char* argv[])
         // Sends data to GPU, draws pyramid on back buffer, and manages obj matrices
         drawPyramid(gMesh2);
         URender(gMesh2, 0.19f, 0.0f, 1.0f, 0.0f, 0.0f, 0.6f, 0.0f);
+
+        // Draws plane
+        drawPlane(gMesh3);
+        URender(gMesh3, 4.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f);
         
         // Swaps front buffer with back buffer 
         glfwSwapBuffers(gWindow);
@@ -237,7 +248,7 @@ void UProcessInput(GLFWwindow* window)
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)      // If ESCAPE key is pressed close program
         glfwSetWindowShouldClose(window, true);
 
-    const float cameraSpeed = 2.5f * deltaTime;
+    
     if (glfwGetKey(window, GLFW_KEY_W) || glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
         cameraPos += cameraSpeed * cameraFront;
     if (glfwGetKey(window, GLFW_KEY_S) || glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
@@ -246,6 +257,10 @@ void UProcessInput(GLFWwindow* window)
         cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
     if (glfwGetKey(window, GLFW_KEY_D) || glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
         cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
+        cameraPos += cameraSpeed * cameraUp;
+    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
+        cameraPos -= cameraSpeed * cameraUp;
 }
 
 
@@ -309,6 +324,60 @@ void URender(GLMesh& mesh, GLfloat _scale, GLfloat rotX, GLfloat rotY, GLfloat r
 }
 
 
+
+// Draws Plane
+void drawPlane(GLMesh& mesh)
+{
+    vector<GLfloat> verts =
+    {
+        // Vertices
+        -0.5f, 0.0f, -0.5f,        1.0f, 1.0f, 1.0f, 1.0f,      // Back left
+        -0.5f, 0.0f,  0.5f,        1.0f, 1.0f, 1.0f, 1.0f,      // Front left
+         0.5f, 0.0f, -0.5f,        1.0f, 1.0f, 1.0f, 1.0f,      // Back right
+         0.5f, 0.0f,  0.5f,        1.0f, 1.0f, 1.0f, 1.0f       // Front right
+    };
+
+    vector<int> indices =
+    {
+        0, 1, 2,
+        1, 2, 3
+    };
+
+    // Position range of x, y, z coords in vector
+    const GLuint floatsPerVertex = 3;
+    // Position range of color coords in vector
+    const GLuint floatsPerColor = 4;
+
+    // Binds the mesh to make it current
+    glBindVertexArray(mesh.vao);
+
+    // Binds the buffer to make it current
+    glBindBuffer(GL_ARRAY_BUFFER, mesh.vbos[0]);
+    // Sends vertex vector data to GPU
+    glBufferData(GL_ARRAY_BUFFER, verts.size() * sizeof(GLfloat), verts.data(), GL_STATIC_DRAW);
+
+    // Calculates index size for later use
+    mesh.nIndices = indices.size();
+    // Binds the buffer to make it current
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.vbos[1]);
+    // Sends index vector data to GPU
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(int), indices.data(), GL_STATIC_DRAW);
+
+    // Number of floats between each vertex point (how many bytes between vertex locations in vector
+    GLint stride = sizeof(float) * (floatsPerVertex + floatsPerColor);
+
+    // Create Vertex Attribute Pointers for use in shader program
+    glVertexAttribPointer(0, floatsPerVertex, GL_FLOAT, GL_FALSE, stride, 0);
+    // Enables vertex attrib array starting at index 0
+    glEnableVertexAttribArray(0);
+
+    glVertexAttribPointer(1, floatsPerColor, GL_FLOAT, GL_FALSE, stride, (char*)(sizeof(float) * floatsPerVertex));
+    glEnableVertexAttribArray(1);
+
+    // Unbinds vertex array so as to not modify it anymore
+    glBindVertexArray(0);
+
+}
 
 
 /*  
@@ -468,6 +537,73 @@ void drawCylinder(GLMesh& mesh, GLfloat height, GLfloat radius, int numSlices)
 
 
 
+/*
+    -------------------------------------
+    Calculates vertices for pyramid
+    Maps the indices for vertex triangles
+    Sends data to GPU for later use
+    -------------------------------------
+*/
+void drawPyramid(GLMesh& mesh)
+{
+    // Vertex coords
+    vector<GLfloat> vertices =
+    {
+        // Vertices			        // Colors (r, g, b)
+    -0.5f,  0.0f,  0.5f,        1.0f, 0.0f, 0.0f, 1.0f, 	// Lower left corner
+    -0.5f,  0.0f, -0.5f,        0.0f, 1.0f, 0.0f, 1.0f, 	// Upper left corner
+     0.5f,	0.0f, -0.5f,        0.0f, 0.0f, 1.0f, 1.0f,	    // Upper right corner
+     0.5f,  0.0f,  0.5f,        0.3f, 0.8f, 0.5f, 1.0f, 	// Lower right corner
+     0.0f,  0.8f,  0.0f,        0.3f, 0.8f, 0.5f, 1.0f	    // Lower right corner
+    };
+
+    // Indices combinations that make up shape
+    vector<GLuint> indices =
+    {
+        0, 1, 2,
+        0, 2, 3,
+        0, 1, 4,
+        1, 2, 4,
+        2, 3, 4,
+        3, 0, 4
+    };
+
+    // Position range of x, y, z coords in vector
+    const GLuint floatsPerVertex = 3;
+    const GLuint floatsPerColor = 4;
+
+    // Binds the mesh to make it current
+    glBindVertexArray(mesh.vao);
+
+    // Binds the 1st buffer of mesh to make it current
+    glBindBuffer(GL_ARRAY_BUFFER, mesh.vbos[0]);
+    // Sends the vertex data to GPU
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(GLfloat), vertices.data(), GL_STATIC_DRAW);
+
+    // Calculates number of indices in vector for later use
+    mesh.nIndices = indices.size();
+    // Binds the 2nd buffer of mesh to make it current 
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.vbos[1]);
+    // Sends the index data to GPU
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(int), indices.data(), GL_STATIC_DRAW);
+
+    // Number of floats between each vertex point (how many bytes between vertex locations in vector)
+    GLint stride = sizeof(float) * (floatsPerVertex + floatsPerColor);
+
+    // Create Vertex Attribute Pointers for use in shader program
+    glVertexAttribPointer(0, floatsPerVertex, GL_FLOAT, GL_FALSE, stride, 0);
+    // Enables vertex attrib array starting of position 0
+    glEnableVertexAttribArray(0);
+
+    glVertexAttribPointer(1, floatsPerColor, GL_FLOAT, GL_FALSE, stride, (char*)(sizeof(float) * floatsPerVertex));
+    glEnableVertexAttribArray(1);
+
+    // Unbinds the mesh so as to not modify it anymore
+    glBindVertexArray(0);
+}
+
+
+
 // Destryoys Mesh 
 // ______________
 void UDestroyMesh(GLMesh& mesh)
@@ -563,75 +699,6 @@ void generateVAO_VBOS(GLMesh& mesh)
 
 
 
-/*
-    -------------------------------------
-    Calculates vertices for pyramid
-    Maps the indices for vertex triangles
-    Sends data to GPU for later use
-    -------------------------------------
-*/
-void drawPyramid(GLMesh& mesh)
-{
-    // Vertex coords
-    vector<GLfloat> vertices =
-    {
-            // Vertices			        // Colors (r, g, b)
-        -0.5f,  0.0f,  0.5f,        //1.0f, 0.0f, 0.0f, 1.0f, 	// Lower left corner
-        -0.5f,  0.0f, -0.5f,       // 0.0f, 1.0f, 0.0f, 1.0f, 	// Upper left corner
-         0.5f,	0.0f, -0.5f,       // 0.0f, 0.0f, 1.0f, 1.0f,	// Upper right corner
-         0.5f,  0.0f,  0.5f,      //  0.3f, 0.8f, 0.5f, 1.0f,	// Lower right corner
-         0.0f,  0.8f,  0.0f,       // 0.3f, 0.8f, 0.5f, 1.0f	// Lower right corner
-    };
-
-    // Indices combinations that make up shape
-    vector<GLuint> indices =
-    {
-        0, 1, 2,
-        0, 2, 3,
-        0, 1, 4,
-        1, 2, 4,
-        2, 3, 4,
-        3, 0, 4
-    };
-
-    // Position range of x, y, z coords in vector
-    const GLuint floatsPerVertex = 3;
-    //const GLuint floatsPerColor = 4;
-
-    // Binds the mesh to make it current
-    glBindVertexArray(mesh.vao);
-
-    // Binds the 1st buffer of mesh to make it current
-    glBindBuffer(GL_ARRAY_BUFFER, mesh.vbos[0]);
-    // Sends the vertex data to GPU
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(GLfloat), vertices.data(), GL_STATIC_DRAW);
-
-    // Calculates number of indices in vector for later use
-    mesh.nIndices = indices.size();
-    // Binds the 2nd buffer of mesh to make it current 
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.vbos[1]);
-    // Sends the index data to GPU
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(int), indices.data(), GL_STATIC_DRAW);
-
-    // Number of floats between each vertex point (how many bytes between vertex locations in vector)
-    GLint stride = sizeof(float) * floatsPerVertex;
-
-    // Create Vertex Attribute Pointers for use in shader program
-    glVertexAttribPointer(0, floatsPerVertex, GL_FLOAT, GL_FALSE, stride, 0);
-    // Enables vertex attrib array starting of position 0
-    glEnableVertexAttribArray(0);
-
-    //glVertexAttribPointer(1, 0, GL_FLOAT, GL_FALSE, stride, (char*)(sizeof(float) * floatsPerVertex));
-    //glEnableVertexAttribArray(1);
-
-    // Unbinds the mesh so as to not modify it anymore
-    glBindVertexArray(0);
-
-    
-}
-
-
-
 // glfw: whenever the mouse moves, this callback is called
 // -------------------------------------------------------
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
@@ -675,9 +742,9 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
 
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
-    fov -= (float)yoffset;
-    if (fov < 1.0f)
-        fov = 1.0f;
-    if (fov > 45.0f)
-        fov = 45.0f;
+    speed += yoffset;
+    if (speed > 2.0f)
+        speed = 2.0f;
+    if (speed < 0.1f)
+        speed = 0.1f;
 }
