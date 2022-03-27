@@ -2,7 +2,10 @@
 **	Justin Holmes
 **	Computer Graphics CS-330
 **	The purpose of this program is to draw and render a 3D environment
-**	This update includes a cylinder with a pyramid to resemble a pen
+**	This update includes a cylinder with a pyramid to resemble a pen with a plane
+**  underneath.  I've also included movement functionality allowing you to move in 
+**  each cardinal direction, up and down, control the speed at which you move,
+**  and the ability to swith between perspective and orthogonal view.
 */
 
 #include <iostream>         
@@ -128,6 +131,7 @@ void main()
 // _______________________
 int main(int argc, char* argv[])
 {
+    // Initialize the window
     if (!UInitialize(argc, argv, &gWindow))
         return EXIT_FAILURE;
 
@@ -247,22 +251,30 @@ bool UInitialize(int argc, char* argv[], GLFWwindow** window)
 // ___________________________________________________________________________________________
 void UProcessInput(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)      // If ESCAPE key is pressed close program
+    // Closes program
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 
     float cameraSpeed = speed * deltaTime;
+    // Move forward
     if (glfwGetKey(window, GLFW_KEY_W) || glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
         cameraPos += cameraSpeed * cameraFront;
+    // Move camera backward
     if (glfwGetKey(window, GLFW_KEY_S) || glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
         cameraPos -= cameraSpeed * cameraFront;
+    // Move camera left
     if (glfwGetKey(window, GLFW_KEY_A) || glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
         cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+    // Move camera right
     if (glfwGetKey(window, GLFW_KEY_D) || glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
         cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+    // Move camera up
     if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
         cameraPos += cameraSpeed * cameraUp;
+    // Move camera down
     if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
         cameraPos -= cameraSpeed * cameraUp;
+    // Swaps between perspective view and orthogonal view
     if (glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS)
     {
         if (isViewPort)
@@ -607,6 +619,7 @@ void drawPyramid(GLMesh& mesh)
     // Enables vertex attrib array starting of position 0
     glEnableVertexAttribArray(0);
 
+    // Creates vertex attrib pointers for the color of vertices
     glVertexAttribPointer(1, floatsPerColor, GL_FLOAT, GL_FALSE, stride, (char*)(sizeof(float) * floatsPerVertex));
     glEnableVertexAttribArray(1);
 
@@ -705,19 +718,21 @@ void UDestroyShaderProgram(GLuint programId)
 // ____________________________________________
 void generateVAO_VBOS(GLMesh& mesh)
 {
-    glGenVertexArrays(1, &mesh.vao); // we can also generate multiple VAOs or buffers at the same time
+    glGenVertexArrays(1, &mesh.vao);
     glGenBuffers(2, mesh.vbos);
 }
 
 
 
 // glfw: whenever the mouse moves, this callback is called
-// -------------------------------------------------------
+// _______________________________________________________
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
 {
+    // Temp variables to hold current mouse position
     float xpos = static_cast<float>(xposIn);
     float ypos = static_cast<float>(yposIn);
 
+    // Check if this is the first time the mouse has moved since start of program
     if (firstMouse)
     {
         lastX = xpos;
@@ -725,24 +740,28 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
         firstMouse = false;
     }
 
+    // Calculates the difference between current position and last known mouse position
     float xoffset = xpos - lastX;
     float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
+    // Sets variable for last x and y positions to current x and y position
     lastX = xpos;
     lastY = ypos;
 
-    float sensitivity = 0.05f; // change this value to your liking
+    // Sets the sensitivity for mouse movement
+    float sensitivity = 0.05f;
     xoffset *= sensitivity;
     yoffset *= sensitivity;
 
     yaw += xoffset;
     pitch += yoffset;
 
-    // make sure that when pitch is out of bounds, screen doesn't get flipped
+    // Make sure that when pitch is out of bounds, screen doesn't get flipped
     if (pitch > 89.0f)
         pitch = 89.0f;
     if (pitch < -89.0f)
         pitch = -89.0f;
 
+    // Sets the new position for the camera focus position
     glm::vec3 front;
     front.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
     front.y = sin(glm::radians(pitch));
@@ -751,7 +770,8 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
 }
 
 
-
+// Handles the mouse scroll wheel events
+// _____________________________________
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
     cout << "Mouse Scroll " << yoffset << endl;
