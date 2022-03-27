@@ -62,7 +62,7 @@ namespace
 
     float deltaTime = 0.0f;
     float lastFrame = 0.0f;
-    float speed = 1.0f;
+    float speed = 5.0f;
 
     bool isViewPort = true;
 
@@ -309,13 +309,10 @@ void URender(GLMesh& mesh, GLfloat _scale, GLfloat rotX, GLfloat rotY, GLfloat r
 
     // Projection matrix
     // Creates a perspective projection (gives depth to the 2D screen locations)
-
     if (isViewPort)
         projection = glm::perspective(glm::radians(fov), (GLfloat)WINDOW_WIDTH / (GLfloat)WINDOW_HEIGHT, 0.1f, 100.0f);
     else
-        projection = glm::ortho(-5.0f, 5.0f, -5.0f, 5.0f, 0.1f, 100.0f);
-
-
+        projection = glm::ortho(-2.0f, 2.0f, -2.0f, 2.0f, 0.1f, 100.0f);
 
     // Set the shader to be used
     glUseProgram(gProgramId);
@@ -758,9 +755,9 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
     cout << "Mouse Scroll " << yoffset << endl;
-    speed -= yoffset / 10;
-    if (speed > 10.0f)
-        speed = 10.0f;
-    if (speed < 1.0f)
-        speed = 1.0f;
+    speed -= yoffset * 2;
+    if (speed > 100.0f)
+        speed = 30.0f;
+    if (speed < 5.0f)
+        speed = 5.0f;
 }
