@@ -25,7 +25,7 @@ using namespace std; // Standard namespace
 // Unnamed namespace
 namespace
 {
-    const char* const WINDOW_TITLE = "CS_330_Project_Milestone_3.5"; // Macro for window title
+    const char* const WINDOW_TITLE = "CS_330_Project_Milestone_4.5"; // Macro for window title
 
     // Variables for window width and height
     const int WINDOW_WIDTH = 800;
@@ -49,10 +49,10 @@ namespace
     GLuint gProgramId;
 
     // Camera position variables
-    glm::vec3 cameraPos     = glm::vec3(0.0f, 1.0f,  3.0f);
-    glm::vec3 cameraFront   = glm::vec3(0.0f, 0.0f, -1.0f);
-    glm::vec3 cameraUp      = glm::vec3(0.0f, 1.0f,  0.0f);
-    
+    glm::vec3 cameraPos = glm::vec3(0.0f, 1.0f, 3.0f);
+    glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
+    glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
+
     bool firstMouse = true;     // Value to reference if this is the first mouse event (program start up)
     float yaw = -90.0f;         // Set to -90 to offset direction vector
     float pitch = 0.0f;
@@ -62,8 +62,11 @@ namespace
 
     float deltaTime = 0.0f;
     float lastFrame = 0.0f;
-    float speed = 0.1f;
-    float cameraSpeed = speed * deltaTime;
+    float speed = 1.0f;
+
+    bool isViewPort = true;
+
+    glm::mat4 projection;// = glm::perspective(glm::radians(fov), (GLfloat)WINDOW_WIDTH / (GLfloat)WINDOW_HEIGHT, 0.1f, 100.0f);
 }
 
 
@@ -71,7 +74,7 @@ namespace
 bool UInitialize(int, char* [], GLFWwindow** window);
 void UResizeWindow(GLFWwindow* window, int width, int height);
 void generateVAO_VBOS(GLMesh& mesh);
-void UProcessInput(GLFWwindow* window);
+void UProcessInput(GLFWwindow* window, int key, int scancode, int action, int mods);
 void drawCylinder(GLMesh& mesh, GLfloat height, GLfloat radius, int numSlices);
 void drawPyramid(GLMesh& mesh);
 void drawPlane(GLMesh& mesh);
@@ -86,7 +89,7 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 // Vertex Shader Code (GLSL)
 // _________________________
 const GLchar* vertexShaderSource = GLSL(440,
-layout(location = 0) in vec3 position; // Vertex data from Vertex Attrib Pointer 0
+    layout(location = 0) in vec3 position; // Vertex data from Vertex Attrib Pointer 0
 layout(location = 1) in vec4 color;  // Color data from Vertex Attrib Pointer 1
 
 out vec4 vertexColor; // variable to transfer color data to the fragment shader
@@ -107,7 +110,7 @@ void main()
 // Fragment Shader Code (GLSL)
 // ___________________________
 const GLchar* fragmentShaderSource = GLSL(440,
-in vec4 vertexColor; // Variable to hold incoming color data from vertex shader
+    in vec4 vertexColor; // Variable to hold incoming color data from vertex shader
 
 out vec4 fragmentColor;
 
@@ -144,9 +147,6 @@ int main(int argc, char* argv[])
         float currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
-        
-        // input
-        UProcessInput(gWindow);
 
         // Enable z-depth to render closest Z coords
         glEnable(GL_DEPTH_TEST);
@@ -158,7 +158,7 @@ int main(int argc, char* argv[])
         // Sends data to GPU, draws cylinder on back buffer, and manages obj matrices
         drawCylinder(gMesh1, 1.2f, 0.1f, 100);
         URender(gMesh1, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f);
-       
+
         // Sends data to GPU, draws pyramid on back buffer, and manages obj matrices
         drawPyramid(gMesh2);
         URender(gMesh2, 0.19f, 0.0f, 1.0f, 0.0f, 0.0f, 0.6f, 0.0f);
@@ -166,7 +166,7 @@ int main(int argc, char* argv[])
         // Draws plane
         drawPlane(gMesh3);
         URender(gMesh3, 4.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f);
-        
+
         // Swaps front buffer with back buffer 
         glfwSwapBuffers(gWindow);
 
@@ -182,7 +182,7 @@ int main(int argc, char* argv[])
     UDestroyShaderProgram(gProgramId);
 
     // Terminates the program successfully
-    exit(EXIT_SUCCESS); 
+    exit(EXIT_SUCCESS);
 }
 
 
@@ -217,6 +217,8 @@ bool UInitialize(int argc, char* argv[], GLFWwindow** window)
     glfwSetCursorPosCallback(*window, mouse_callback);
     // Handles the scroll movement events
     glfwSetScrollCallback(*window, scroll_callback);
+    // Handles the keyboard events
+    glfwSetKeyCallback(*window, UProcessInput);
 
     // Tells GLFW to capture our mouse
     glfwSetInputMode(*window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
@@ -243,24 +245,31 @@ bool UInitialize(int argc, char* argv[], GLFWwindow** window)
 
 // Processes input from user; monitors keystrokes and mouse movement and processes accordingly
 // ___________________________________________________________________________________________
-void UProcessInput(GLFWwindow* window)
+void UProcessInput(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)      // If ESCAPE key is pressed close program
         glfwSetWindowShouldClose(window, true);
 
-    
+    float cameraSpeed = speed * deltaTime;
     if (glfwGetKey(window, GLFW_KEY_W) || glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
         cameraPos += cameraSpeed * cameraFront;
     if (glfwGetKey(window, GLFW_KEY_S) || glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
         cameraPos -= cameraSpeed * cameraFront;
     if (glfwGetKey(window, GLFW_KEY_A) || glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
-        cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
-    if (glfwGetKey(window, GLFW_KEY_D) || glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
         cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+    if (glfwGetKey(window, GLFW_KEY_D) || glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+        cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
     if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
         cameraPos += cameraSpeed * cameraUp;
     if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
         cameraPos -= cameraSpeed * cameraUp;
+    if (glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS)
+    {
+        if (isViewPort)
+            isViewPort = false;
+        else
+            isViewPort = true;
+    }
 }
 
 
@@ -278,7 +287,7 @@ void UResizeWindow(GLFWwindow* window, int width, int height)
 // ___________________________________
 void URender(GLMesh& mesh, GLfloat _scale, GLfloat rotX, GLfloat rotY, GLfloat rotZ, GLfloat translX, GLfloat translY, GLfloat translZ)
 {
-    
+
     // Model matrix
     // Creates matrix for scaling object
     glm::mat4 scale = glm::scale(glm::vec3(_scale, _scale, _scale));
@@ -300,7 +309,13 @@ void URender(GLMesh& mesh, GLfloat _scale, GLfloat rotX, GLfloat rotY, GLfloat r
 
     // Projection matrix
     // Creates a perspective projection (gives depth to the 2D screen locations)
-    glm::mat4 projection = glm::perspective(glm::radians(fov), (GLfloat)WINDOW_WIDTH / (GLfloat)WINDOW_HEIGHT, 0.1f, 100.0f);
+
+    if (isViewPort)
+        projection = glm::perspective(glm::radians(fov), (GLfloat)WINDOW_WIDTH / (GLfloat)WINDOW_HEIGHT, 0.1f, 100.0f);
+    else
+        projection = glm::ortho(-5.0f, 5.0f, -5.0f, 5.0f, 0.1f, 100.0f);
+
+
 
     // Set the shader to be used
     glUseProgram(gProgramId);
@@ -380,7 +395,7 @@ void drawPlane(GLMesh& mesh)
 }
 
 
-/*  
+/*
     -------------------------------------
     Calculates vertices for cylinder
     Maps the indices for vertex triangles
@@ -393,7 +408,7 @@ void drawCylinder(GLMesh& mesh, GLfloat height, GLfloat radius, int numSlices)
     std::vector<GLfloat> circleArray;
     // Creates vector for vertex storage of whole cylinder
     std::vector<GLfloat> vertexArray;
-    
+
     // Determines how many slices around a circle
     float sectorStep = 2.0f * glm::pi<float>() / numSlices;
     float sectorAngle;
@@ -417,9 +432,9 @@ void drawCylinder(GLMesh& mesh, GLfloat height, GLfloat radius, int numSlices)
             float uy = circleArray[k + 1];      // y location holder
             float uz = circleArray[k + 2];      // z location holder
             // position vector
-            vertexArray.push_back(ux * radius); 
+            vertexArray.push_back(ux * radius);
             vertexArray.push_back(h);
-            vertexArray.push_back(uz * radius); 
+            vertexArray.push_back(uz * radius);
         }
     }
 
@@ -436,7 +451,7 @@ void drawCylinder(GLMesh& mesh, GLfloat height, GLfloat radius, int numSlices)
         // Center point
         vertexArray.push_back(0);
         vertexArray.push_back(h);
-        vertexArray.push_back(0); 
+        vertexArray.push_back(0);
 
         for (int j = 0, k = 0; j < numSlices; ++j, k += 3)
         {
@@ -445,7 +460,7 @@ void drawCylinder(GLMesh& mesh, GLfloat height, GLfloat radius, int numSlices)
             // Position vector
             vertexArray.push_back(ux * radius);
             vertexArray.push_back(h);
-            vertexArray.push_back(uz * radius); 
+            vertexArray.push_back(uz * radius);
         }
     }
 
@@ -460,13 +475,13 @@ void drawCylinder(GLMesh& mesh, GLfloat height, GLfloat radius, int numSlices)
         // 2 triangles per sector
         // k1 => k1+1 => k2
         indices.push_back(k1);
-        indices.push_back(k1 + 1); 
+        indices.push_back(k1 + 1);
         indices.push_back(k2);
 
         // k2 => k1+1 => k2+1
         indices.push_back(k2);
         indices.push_back(k1 + 1);
-        indices.push_back(k2 + 1); 
+        indices.push_back(k2 + 1);
     }
 
     // Indices for the base surface
@@ -475,14 +490,14 @@ void drawCylinder(GLMesh& mesh, GLfloat height, GLfloat radius, int numSlices)
         if (i < numSlices - 1)
         {
             indices.push_back(baseCenterIndex);
-            indices.push_back(k + 1); 
+            indices.push_back(k + 1);
             indices.push_back(k);
         }
         else // last triangle
         {
             indices.push_back(baseCenterIndex);
             indices.push_back(baseCenterIndex + 1);
-            indices.push_back(k); 
+            indices.push_back(k);
         }
     }
 
@@ -492,14 +507,14 @@ void drawCylinder(GLMesh& mesh, GLfloat height, GLfloat radius, int numSlices)
         if (i < numSlices - 1)
         {
             indices.push_back(topCenterIndex);
-            indices.push_back(k); 
+            indices.push_back(k);
             indices.push_back(k + 1);
         }
         else // last triangle
         {
             indices.push_back(topCenterIndex);
             indices.push_back(k);
-            indices.push_back(topCenterIndex + 1); 
+            indices.push_back(topCenterIndex + 1);
         }
     }
 
@@ -647,7 +662,7 @@ bool UCreateShaderProgram(const char* vtxShaderSource, const char* fragShaderSou
     }
 
     // Compile the fragment shader, and print compilation errors (if any)
-    glCompileShader(fragmentShaderId); 
+    glCompileShader(fragmentShaderId);
     glGetShaderiv(fragmentShaderId, GL_COMPILE_STATUS, &success);
     if (!success)
     {
@@ -673,7 +688,7 @@ bool UCreateShaderProgram(const char* vtxShaderSource, const char* fragShaderSou
     }
 
     // Uses the shader program
-    glUseProgram(programId); 
+    glUseProgram(programId);
 
     return true;
 }
@@ -742,9 +757,10 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
 
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
-    speed += yoffset;
-    if (speed > 2.0f)
-        speed = 2.0f;
-    if (speed < 0.1f)
-        speed = 0.1f;
+    cout << "Mouse Scroll " << yoffset << endl;
+    speed -= yoffset / 10;
+    if (speed > 10.0f)
+        speed = 10.0f;
+    if (speed < 1.0f)
+        speed = 1.0f;
 }
