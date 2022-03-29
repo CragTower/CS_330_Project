@@ -17,6 +17,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include "Shader.h"
 
 using namespace std; // Standard namespace
 
@@ -82,9 +83,9 @@ void drawCylinder(GLMesh& mesh, GLfloat height, GLfloat radius, int numSlices);
 void drawPyramid(GLMesh& mesh);
 void drawPlane(GLMesh& mesh);
 void UDestroyMesh(GLMesh& mesh);
-void URender(GLMesh& mesh, GLfloat _scale, GLfloat rotX, GLfloat rotY, GLfloat rotZ, GLfloat translX, GLfloat translY, GLfloat translZ);
-bool UCreateShaderProgram(const char* vtxShaderSource, const char* fragShaderSource, GLuint& programId);
-void UDestroyShaderProgram(GLuint programId);
+void URender(GLMesh& mesh, Shader newShader, GLfloat _scale, GLfloat rotX, GLfloat rotY, GLfloat rotZ, GLfloat translX, GLfloat translY, GLfloat translZ);
+//bool UCreateShaderProgram(const char* vtxShaderSource, const char* fragShaderSource, GLuint& programId);
+//void UDestroyShaderProgram(GLuint programId);
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 
@@ -135,10 +136,13 @@ int main(int argc, char* argv[])
     if (!UInitialize(argc, argv, &gWindow))
         return EXIT_FAILURE;
 
+    Shader newShader(vertexShaderSource, fragmentShaderSource);
+    
+    /*
     // Create the shader program
     if (!UCreateShaderProgram(vertexShaderSource, fragmentShaderSource, gProgramId))
         return EXIT_FAILURE;
-
+    */
     // Generates the VAO's and VBO's for each Mesh created
     generateVAO_VBOS(gMesh1);
     generateVAO_VBOS(gMesh2);
@@ -152,6 +156,7 @@ int main(int argc, char* argv[])
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
+        
         // Enable z-depth to render closest Z coords
         glEnable(GL_DEPTH_TEST);
 
@@ -161,15 +166,15 @@ int main(int argc, char* argv[])
 
         // Sends data to GPU, draws cylinder on back buffer, and manages obj matrices
         drawCylinder(gMesh1, 1.2f, 0.1f, 100);
-        URender(gMesh1, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+        URender(gMesh1, newShader, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 
         // Sends data to GPU, draws pyramid on back buffer, and manages obj matrices
         drawPyramid(gMesh2);
-        URender(gMesh2, 0.19f, 0.0f, 1.0f, 0.0f, 0.0f, 0.6f, 0.0f);
+        URender(gMesh2, newShader, 0.19f, 0.0f, 1.0f, 0.0f, 0.0f, 0.6f, 0.0f);
 
         // Draws plane
         drawPlane(gMesh3);
-        URender(gMesh3, 4.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+        URender(gMesh3, newShader, 4.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 
         // Swaps front buffer with back buffer 
         glfwSwapBuffers(gWindow);
@@ -182,8 +187,10 @@ int main(int argc, char* argv[])
     UDestroyMesh(gMesh1);
     UDestroyMesh(gMesh2);
 
+    newShader.Delete();
+    
     // Release shader program
-    UDestroyShaderProgram(gProgramId);
+    //UDestroyShaderProgram(gProgramId);
 
     // Terminates the program successfully
     exit(EXIT_SUCCESS);
@@ -297,7 +304,7 @@ void UResizeWindow(GLFWwindow* window, int width, int height)
 
 // Functioned called to render a frame
 // ___________________________________
-void URender(GLMesh& mesh, GLfloat _scale, GLfloat rotX, GLfloat rotY, GLfloat rotZ, GLfloat translX, GLfloat translY, GLfloat translZ)
+void URender(GLMesh& mesh, Shader newShader, GLfloat _scale, GLfloat rotX, GLfloat rotY, GLfloat rotZ, GLfloat translX, GLfloat translY, GLfloat translZ)
 {
 
     // Model matrix
@@ -326,13 +333,15 @@ void URender(GLMesh& mesh, GLfloat _scale, GLfloat rotX, GLfloat rotY, GLfloat r
     else
         projection = glm::ortho(-2.0f, 2.0f, -2.0f, 2.0f, 0.1f, 100.0f);
 
+    
+    
     // Set the shader to be used
-    glUseProgram(gProgramId);
+    newShader.Activate();
 
     // Retrives variable names from current shader program and assigns them to local variables
-    GLint modelLoc = glGetUniformLocation(gProgramId, "model");
-    GLint viewLoc = glGetUniformLocation(gProgramId, "view");
-    GLint projLoc = glGetUniformLocation(gProgramId, "projection");
+    GLint modelLoc = glGetUniformLocation(newShader.ID, "model");
+    GLint viewLoc = glGetUniformLocation(newShader.ID, "view");
+    GLint projLoc = glGetUniformLocation(newShader.ID, "projection");
 
     // Sends matrix manipulation information back to GPU
     glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
@@ -637,79 +646,6 @@ void UDestroyMesh(GLMesh& mesh)
     glDeleteVertexArrays(1, &mesh.vao);
     // Deletes vbo position of mesh
     glDeleteBuffers(2, mesh.vbos);
-}
-
-
-
-// Implements the UCreateShaders function
-// ______________________________________
-bool UCreateShaderProgram(const char* vtxShaderSource, const char* fragShaderSource, GLuint& programId)
-{
-    // Compilation and linkage error reporting
-    int success = 0;
-    char infoLog[512];
-
-    // Create a Shader program object.
-    programId = glCreateProgram();
-
-    // Create the vertex and fragment shader objects
-    GLuint vertexShaderId = glCreateShader(GL_VERTEX_SHADER);
-    GLuint fragmentShaderId = glCreateShader(GL_FRAGMENT_SHADER);
-
-    // Retrieve the shader source code and assigns it to variables in first argument slot
-    glShaderSource(vertexShaderId, 1, &vtxShaderSource, NULL);
-    glShaderSource(fragmentShaderId, 1, &fragShaderSource, NULL);
-
-    // Compile the vertex shader, and print compilation errors (if any)
-    glCompileShader(vertexShaderId);
-    glGetShaderiv(vertexShaderId, GL_COMPILE_STATUS, &success);
-    if (!success)
-    {
-        glGetShaderInfoLog(vertexShaderId, 512, NULL, infoLog);
-        std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
-
-        return false;
-    }
-
-    // Compile the fragment shader, and print compilation errors (if any)
-    glCompileShader(fragmentShaderId);
-    glGetShaderiv(fragmentShaderId, GL_COMPILE_STATUS, &success);
-    if (!success)
-    {
-        glGetShaderInfoLog(fragmentShaderId, sizeof(infoLog), NULL, infoLog);
-        std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
-
-        return false;
-    }
-
-    // Attached compiled shaders to the shader program
-    glAttachShader(programId, vertexShaderId);
-    glAttachShader(programId, fragmentShaderId);
-
-    // Links the shader program and checks for compile errors
-    glLinkProgram(programId);
-    glGetProgramiv(programId, GL_LINK_STATUS, &success);
-    if (!success)
-    {
-        glGetProgramInfoLog(programId, sizeof(infoLog), NULL, infoLog);
-        std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
-
-        return false;
-    }
-
-    // Uses the shader program
-    glUseProgram(programId);
-
-    return true;
-}
-
-
-
-// Destroys the shader program
-// ___________________________
-void UDestroyShaderProgram(GLuint programId)
-{
-    glDeleteProgram(programId);
 }
 
 
