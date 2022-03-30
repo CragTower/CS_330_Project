@@ -48,9 +48,7 @@ Shader::Shader(const char* vertexShaderSource, const char* fragmentShaderSource)
         std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
     }
 
-    
-
-    // Delete both Vertex and Fragment shaders
+    // Delete both Vertex and Fragment shader variables now they are no longer being used
     glDeleteShader(vertexShaderID);
     glDeleteShader(fragmentShaderID);
 }

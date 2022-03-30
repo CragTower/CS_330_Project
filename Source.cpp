@@ -8,16 +8,10 @@
 **  and the ability to swith between perspective and orthogonal view.
 */
 
-#include <iostream>         
-#include <cstdlib>          
-#include <vector>
-#include <GL/glew.h>        
-#include <GLFW/glfw3.h>     
+#include "Mesh.h"
 
-#include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include "Shader.h"
 
 using namespace std; // Standard namespace
 
@@ -29,67 +23,53 @@ using namespace std; // Standard namespace
 // Unnamed namespace
 namespace
 {
-    const char* const WINDOW_TITLE = "CS_330_Project_Milestone_4.5"; // Macro for window title
+    // Variable for window title
+    const char* const WINDOW_TITLE = "CS_330_Project_Milestone_4.5"; 
 
     // Variables for window width and height
     const int WINDOW_WIDTH = 800;
     const int WINDOW_HEIGHT = 600;
 
-    // Creates a structure to hold the Mesh data
-    struct GLMesh
-    {
-        GLuint vao;         // Handle for the vertex array object
-        GLuint vbos[2];     // Handles for the vertex buffer objects
-        GLuint nIndices;    // Number of indices of the mesh
-    };
-
     // Global variable to hold main GLFW window
     GLFWwindow* gWindow = nullptr;
-    // Global variable to hold the different instances of Mesh data
-    GLMesh gMesh1;
-    GLMesh gMesh2;
-    GLMesh gMesh3;
-    // Global variable to hold Shader program
-    GLuint gProgramId;
 
+    // FIXME: Create Camera class
     // Camera position variables
     glm::vec3 cameraPos = glm::vec3(0.0f, 1.0f, 3.0f);
     glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
     glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 
-    bool firstMouse = true;     // Value to reference if this is the first mouse event (program start up)
-    float yaw = -90.0f;         // Set to -90 to offset direction vector
+    bool firstMouse = true;             // Value to reference if this is the first mouse event (program start up)
+    float yaw = -90.0f;                 // Set to -90 to offset direction vector
     float pitch = 0.0f;
-    float lastX = WINDOW_WIDTH / 2.0;
-    float lastY = WINDOW_HEIGHT / 2.0;
-    float fov = 45.0f;
+    float lastX = WINDOW_WIDTH / 2.0;   // Gets center point of window width
+    float lastY = WINDOW_HEIGHT / 2.0;  // Gets center point of window height
+    float fov = 45.0f;                  // Field of View
 
-    float deltaTime = 0.0f;
-    float lastFrame = 0.0f;
-    float speed = 5.0f;
+    float deltaTime = 0.0f;             // Time difference between current and last update
+    float lastFrame = 0.0f;             // Holds the time of last update
+    float speed = 5.0f;                 // Current speed for camer movement
 
-    bool isViewPort = true;
+    bool isViewPort = true;             // Is the current view "perspective"
 
-    glm::mat4 projection;// = glm::perspective(glm::radians(fov), (GLfloat)WINDOW_WIDTH / (GLfloat)WINDOW_HEIGHT, 0.1f, 100.0f);
+    glm::mat4 projection;               // Variable to hold projection matrix
 }
 
 
 // User defined functions
 bool UInitialize(int, char* [], GLFWwindow** window);
 void UResizeWindow(GLFWwindow* window, int width, int height);
-void generateVAO_VBOS(GLMesh& mesh);
-void UProcessInput(GLFWwindow* window, int key, int scancode, int action, int mods);
-void drawCylinder(GLMesh& mesh, GLfloat height, GLfloat radius, int numSlices);
-void drawPyramid(GLMesh& mesh);
-void drawPlane(GLMesh& mesh);
-void UDestroyMesh(GLMesh& mesh);
-void URender(GLMesh& mesh, Shader newShader, GLfloat _scale, GLfloat rotX, GLfloat rotY, GLfloat rotZ, GLfloat translX, GLfloat translY, GLfloat translZ);
-//bool UCreateShaderProgram(const char* vtxShaderSource, const char* fragShaderSource, GLuint& programId);
-//void UDestroyShaderProgram(GLuint programId);
+void processInput(GLFWwindow* window);
+void toggleInput(GLFWwindow* window, int key, int scancode, int action, int mods);
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+void URender(Mesh& Mesh, Shader newShader, GLfloat _scale, GLfloat rotX, GLfloat rotY, GLfloat rotZ, GLfloat translX, GLfloat translY, GLfloat translZ);
+static Mesh drawCylinder(GLfloat height, GLfloat radius, int numSlices);
+static Mesh drawPyramid();
+static Mesh drawPlane();
 
 
+// FIXME: Create separate files in project for Shader source code
 // Vertex Shader Code (GLSL)
 // _________________________
 const GLchar* vertexShaderSource = GLSL(440,
@@ -128,6 +108,7 @@ void main()
 );
 
 
+
 // Main entry into program
 // _______________________
 int main(int argc, char* argv[])
@@ -136,27 +117,26 @@ int main(int argc, char* argv[])
     if (!UInitialize(argc, argv, &gWindow))
         return EXIT_FAILURE;
 
+    // Creates new shader program
     Shader newShader(vertexShaderSource, fragmentShaderSource);
     
-    /*
-    // Create the shader program
-    if (!UCreateShaderProgram(vertexShaderSource, fragmentShaderSource, gProgramId))
-        return EXIT_FAILURE;
-    */
-    // Generates the VAO's and VBO's for each Mesh created
-    generateVAO_VBOS(gMesh1);
-    generateVAO_VBOS(gMesh2);
-    generateVAO_VBOS(gMesh3);
+    // Sends shape information to GPU
+    Mesh cylinder   = drawCylinder(1.2f, 0.1f, 100);
+    Mesh pyramid    = drawPyramid();
+    Mesh floor      = drawPlane();
 
     // render loop
     // ___________
     while (!glfwWindowShouldClose(gWindow))
     {
+        // Gets delta time
         float currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
-        
+        // Process user inputs
+        processInput(gWindow);
+
         // Enable z-depth to render closest Z coords
         glEnable(GL_DEPTH_TEST);
 
@@ -164,33 +144,27 @@ int main(int argc, char* argv[])
         glClearColor(0.0f, 0.3f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // Sends data to GPU, draws cylinder on back buffer, and manages obj matrices
-        drawCylinder(gMesh1, 1.2f, 0.1f, 100);
-        URender(gMesh1, newShader, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f);
-
-        // Sends data to GPU, draws pyramid on back buffer, and manages obj matrices
-        drawPyramid(gMesh2);
-        URender(gMesh2, newShader, 0.19f, 0.0f, 1.0f, 0.0f, 0.0f, 0.6f, 0.0f);
-
-        // Draws plane
-        drawPlane(gMesh3);
-        URender(gMesh3, newShader, 4.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f);
-
+        // Draws cylinder on back buffer, and manages obj matrices
+        URender(cylinder, newShader, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+        cylinder.Draw(newShader);
+        // Draws pyramid on back buffer, and manages obj matrices
+        URender(pyramid, newShader, 0.19f, 0.0f, 1.0f, 0.0f, 0.0f, 0.6f, 0.0f);
+        pyramid.Draw(newShader);
+        // Draws plane on back buffer, and manages obj matrices
+        URender(floor, newShader, 4.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+        floor.Draw(newShader);
+        
         // Swaps front buffer with back buffer 
         glfwSwapBuffers(gWindow);
 
         // Polls events (monitors Input/Output events such as keystrokes or mouse movements)
         glfwPollEvents();
     }
-
-    // Release mesh data
-    UDestroyMesh(gMesh1);
-    UDestroyMesh(gMesh2);
-
-    newShader.Delete();
     
-    // Release shader program
-    //UDestroyShaderProgram(gProgramId);
+    // Delete's shader program
+    newShader.Delete();
+    // Delete's the glfw window
+    glfwDestroyWindow(gWindow);
 
     // Terminates the program successfully
     exit(EXIT_SUCCESS);
@@ -229,8 +203,7 @@ bool UInitialize(int argc, char* argv[], GLFWwindow** window)
     // Handles the scroll movement events
     glfwSetScrollCallback(*window, scroll_callback);
     // Handles the keyboard events
-    glfwSetKeyCallback(*window, UProcessInput);
-
+    glfwSetKeyCallback(*window, toggleInput);
     // Tells GLFW to capture our mouse
     glfwSetInputMode(*window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
@@ -256,7 +229,7 @@ bool UInitialize(int argc, char* argv[], GLFWwindow** window)
 
 // Processes input from user; monitors keystrokes and mouse movement and processes accordingly
 // ___________________________________________________________________________________________
-void UProcessInput(GLFWwindow* window, int key, int scancode, int action, int mods)
+void processInput(GLFWwindow* window)
 {
     // Closes program
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
@@ -277,10 +250,17 @@ void UProcessInput(GLFWwindow* window, int key, int scancode, int action, int mo
         cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
     // Move camera up
     if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
-        cameraPos += cameraSpeed * cameraUp;
+        cameraPos -= cameraSpeed * cameraUp;
     // Move camera down
     if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
-        cameraPos -= cameraSpeed * cameraUp;
+        cameraPos += cameraSpeed * cameraUp;
+}
+
+
+
+//
+void toggleInput(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
     // Swaps between perspective view and orthogonal view
     if (glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS)
     {
@@ -290,7 +270,6 @@ void UProcessInput(GLFWwindow* window, int key, int scancode, int action, int mo
             isViewPort = true;
     }
 }
-
 
 
 // When window is resized the viewport is also changed
@@ -304,10 +283,10 @@ void UResizeWindow(GLFWwindow* window, int width, int height)
 
 // Functioned called to render a frame
 // ___________________________________
-void URender(GLMesh& mesh, Shader newShader, GLfloat _scale, GLfloat rotX, GLfloat rotY, GLfloat rotZ, GLfloat translX, GLfloat translY, GLfloat translZ)
+void URender(Mesh& Mesh, Shader newShader, GLfloat _scale, GLfloat rotX, GLfloat rotY, GLfloat rotZ, GLfloat translX, GLfloat translY, GLfloat translZ)
 {
-
     // Model matrix
+    // ------------
     // Creates matrix for scaling object
     glm::mat4 scale = glm::scale(glm::vec3(_scale, _scale, _scale));
     // Creates matrix for rotating object
@@ -318,23 +297,22 @@ void URender(GLMesh& mesh, Shader newShader, GLfloat _scale, GLfloat rotX, GLflo
     glm::mat4 model = translation * rotation * scale;
 
     // View matrix
+    // -----------
     // Moves the "camera" (x, y, or z)
-    glm::mat4 view = glm::mat4(1.0f); // make sure to initialize matrix to identity matrix first
+    glm::mat4 view = glm::mat4(1.0f); // Initializes to identity matrix
     float radius = 3.0f;
     float camX = static_cast<float>(sin(glfwGetTime()) * radius);
     float camZ = static_cast<float>(cos(glfwGetTime()) * radius);
     view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
-    //glm::mat4 view = glm::translate(glm::vec3(0.0f, 0.0f, -2.0f));
 
     // Projection matrix
-    // Creates a perspective projection (gives depth to the 2D screen locations)
+    // -----------------
+    // Swaps between perspective view and orthogonal view
     if (isViewPort)
         projection = glm::perspective(glm::radians(fov), (GLfloat)WINDOW_WIDTH / (GLfloat)WINDOW_HEIGHT, 0.1f, 100.0f);
     else
         projection = glm::ortho(-2.0f, 2.0f, -2.0f, 2.0f, 0.1f, 100.0f);
 
-    
-    
     // Set the shader to be used
     newShader.Activate();
 
@@ -347,70 +325,35 @@ void URender(GLMesh& mesh, Shader newShader, GLfloat _scale, GLfloat rotX, GLflo
     glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
     glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
-
-    // Makes mesh in argument the current mesh
-    glBindVertexArray(mesh.vao);
-    // Draws the current mesh data onto the back buffer
-    glDrawElements(GL_TRIANGLES, mesh.nIndices, GL_UNSIGNED_INT, NULL);
-    // Unbinds the current mesh so as to not alter it
-    glBindVertexArray(0);
 }
 
 
 
 // Draws Plane
-void drawPlane(GLMesh& mesh)
+static Mesh drawPlane()
 {
-    vector<GLfloat> verts =
+    // Vector for plane vertices
+    std::vector<Vertex> verts =
     {
-        // Vertices
-        -0.5f, 0.0f, -0.5f,        1.0f, 1.0f, 1.0f, 1.0f,      // Back left
-        -0.5f, 0.0f,  0.5f,        1.0f, 1.0f, 1.0f, 1.0f,      // Front left
-         0.5f, 0.0f, -0.5f,        1.0f, 1.0f, 1.0f, 1.0f,      // Back right
-         0.5f, 0.0f,  0.5f,        1.0f, 1.0f, 1.0f, 1.0f       // Front right
+                // Vertices                               // Color
+        Vertex{glm::vec3(-0.5f, 0.0f, -0.5f), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)},      // Back left
+        Vertex{glm::vec3(-0.5f, 0.0f,  0.5f), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)},      // Front left
+        Vertex{glm::vec3( 0.5f, 0.0f, -0.5f), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)},      // Back right
+        Vertex{glm::vec3( 0.5f, 0.0f,  0.5f), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)}       // Front right
     };
 
-    vector<int> indices =
+    // Vector of indexes for triangle configuration
+    std::vector<GLuint> indices =
     {
         0, 1, 2,
         1, 2, 3
     };
 
-    // Position range of x, y, z coords in vector
-    const GLuint floatsPerVertex = 3;
-    // Position range of color coords in vector
-    const GLuint floatsPerColor = 4;
-
-    // Binds the mesh to make it current
-    glBindVertexArray(mesh.vao);
-
-    // Binds the buffer to make it current
-    glBindBuffer(GL_ARRAY_BUFFER, mesh.vbos[0]);
-    // Sends vertex vector data to GPU
-    glBufferData(GL_ARRAY_BUFFER, verts.size() * sizeof(GLfloat), verts.data(), GL_STATIC_DRAW);
-
-    // Calculates index size for later use
-    mesh.nIndices = indices.size();
-    // Binds the buffer to make it current
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.vbos[1]);
-    // Sends index vector data to GPU
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(int), indices.data(), GL_STATIC_DRAW);
-
-    // Number of floats between each vertex point (how many bytes between vertex locations in vector
-    GLint stride = sizeof(float) * (floatsPerVertex + floatsPerColor);
-
-    // Create Vertex Attribute Pointers for use in shader program
-    glVertexAttribPointer(0, floatsPerVertex, GL_FLOAT, GL_FALSE, stride, 0);
-    // Enables vertex attrib array starting at index 0
-    glEnableVertexAttribArray(0);
-
-    glVertexAttribPointer(1, floatsPerColor, GL_FLOAT, GL_FALSE, stride, (char*)(sizeof(float) * floatsPerVertex));
-    glEnableVertexAttribArray(1);
-
-    // Unbinds vertex array so as to not modify it anymore
-    glBindVertexArray(0);
-
+    // Returns a new Mesh
+    Mesh floor(verts, indices);
+    return floor;
 }
+
 
 
 /*
@@ -420,12 +363,12 @@ void drawPlane(GLMesh& mesh)
     Sends data to GPU for later use
     -------------------------------------
 */
-void drawCylinder(GLMesh& mesh, GLfloat height, GLfloat radius, int numSlices)
+static Mesh drawCylinder(GLfloat height, GLfloat radius, int numSlices)
 {
     // Creates vector for calculated points for a 2D circle
     std::vector<GLfloat> circleArray;
     // Creates vector for vertex storage of whole cylinder
-    std::vector<GLfloat> vertexArray;
+    std::vector<Vertex> vertexArray;
 
     // Determines how many slices around a circle
     float sectorStep = 2.0f * glm::pi<float>() / numSlices;
@@ -450,9 +393,11 @@ void drawCylinder(GLMesh& mesh, GLfloat height, GLfloat radius, int numSlices)
             float uy = circleArray[k + 1];      // y location holder
             float uz = circleArray[k + 2];      // z location holder
             // position vector
-            vertexArray.push_back(ux * radius);
-            vertexArray.push_back(h);
-            vertexArray.push_back(uz * radius);
+            //vertexArray.push_back(ux * radius);
+            //vertexArray.push_back(h);
+            //vertexArray.push_back(uz * radius);
+            vertexArray.push_back(Vertex{ glm::vec3(ux * radius, h, uz * radius), glm::vec4(0.0f, 0.0f, 0.5f, 1.0f) });
+            //vertexArray.push_back(Vertex{ });
         }
     }
 
@@ -467,23 +412,26 @@ void drawCylinder(GLMesh& mesh, GLfloat height, GLfloat radius, int numSlices)
         float h = -height / 2.0f + i * height;      // determines height
 
         // Center point
-        vertexArray.push_back(0);
-        vertexArray.push_back(h);
-        vertexArray.push_back(0);
+        //-----vertexArray.push_back(0);
+        //-----vertexArray.push_back(h);
+        //-----vertexArray.push_back(0);
+        vertexArray.push_back(Vertex{ glm::vec3(0, h, 0), glm::vec4(0.0f, 0.0f, 1.0f, 1.0f) });
 
         for (int j = 0, k = 0; j < numSlices; ++j, k += 3)
         {
             float ux = circleArray[k];      // x location holder
             float uz = circleArray[k + 2];  // z location holder
             // Position vector
-            vertexArray.push_back(ux * radius);
-            vertexArray.push_back(h);
-            vertexArray.push_back(uz * radius);
+            //-----vertexArray.push_back(ux * radius);
+            //-----vertexArray.push_back(h);
+            //-----vertexArray.push_back(uz * radius);
+            vertexArray.push_back(Vertex{ glm::vec3(ux * radius, h, uz * radius), glm::vec4(0.0f, 0.0f, 1.0f, 1.0f) });
+            
         }
     }
 
     // Generate vector for indices mapping
-    std::vector<int> indices;
+    std::vector<GLuint> indices;
     int k1 = 0;                       // 1st vertex index at base
     int k2 = numSlices + 1;           // 1st vertex index at top
 
@@ -536,36 +484,9 @@ void drawCylinder(GLMesh& mesh, GLfloat height, GLfloat radius, int numSlices)
         }
     }
 
-    // Position range of x, y, z coords in vector
-    const GLuint floatsPerVertex = 3;
-    // Position range of color coords in vector
-    //const GLuint floatsPerColor = 4;
-
-    // Binds the mesh to make it current
-    glBindVertexArray(mesh.vao);
-
-    // Binds the buffer to make it current
-    glBindBuffer(GL_ARRAY_BUFFER, mesh.vbos[0]);
-    // Sends vertex vector data to GPU
-    glBufferData(GL_ARRAY_BUFFER, vertexArray.size() * sizeof(GLfloat), vertexArray.data(), GL_STATIC_DRAW);
-
-    // Calculates index size for later use
-    mesh.nIndices = indices.size();
-    // Binds the buffer to make it current
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.vbos[1]);
-    // Sends index vector data to GPU
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(int), indices.data(), GL_STATIC_DRAW);
-
-    // Number of floats between each vertex point (how many bytes between vertex locations in vector
-    GLint stride = sizeof(float) * floatsPerVertex;
-
-    // Create Vertex Attribute Pointers for use in shader program
-    glVertexAttribPointer(0, floatsPerVertex, GL_FLOAT, GL_FALSE, stride, 0);
-    // Enables vertex attrib array starting at index 0
-    glEnableVertexAttribArray(0);
-
-    // Unbinds vertex array so as to not modify it anymore
-    glBindVertexArray(0);
+    // Returns a new Mesh
+    Mesh cyl(vertexArray, indices);
+    return cyl;
 }
 
 
@@ -577,17 +498,17 @@ void drawCylinder(GLMesh& mesh, GLfloat height, GLfloat radius, int numSlices)
     Sends data to GPU for later use
     -------------------------------------
 */
-void drawPyramid(GLMesh& mesh)
+static Mesh drawPyramid()
 {
     // Vertex coords
-    vector<GLfloat> vertices =
+    vector<Vertex> vertices =
     {
         // Vertices			        // Colors (r, g, b)
-    -0.5f,  0.0f,  0.5f,        1.0f, 0.0f, 0.0f, 1.0f, 	// Lower left corner
-    -0.5f,  0.0f, -0.5f,        0.0f, 1.0f, 0.0f, 1.0f, 	// Upper left corner
-     0.5f,	0.0f, -0.5f,        0.0f, 0.0f, 1.0f, 1.0f,	    // Upper right corner
-     0.5f,  0.0f,  0.5f,        0.3f, 0.8f, 0.5f, 1.0f, 	// Lower right corner
-     0.0f,  0.8f,  0.0f,        0.3f, 0.8f, 0.5f, 1.0f	    // Lower right corner
+    Vertex{glm::vec3(-0.5f,  0.0f,  0.5f), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f)}, 	// Lower left corner
+    Vertex{glm::vec3(-0.5f,  0.0f, -0.5f), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f)},	// Upper left corner
+    Vertex{glm::vec3( 0.5f,	 0.0f, -0.5f), glm::vec4(0.0f, 0.0f, 1.0f, 1.0f)},  // Upper right corner
+    Vertex{glm::vec3( 0.5f,  0.0f,  0.5f), glm::vec4(0.3f, 0.8f, 0.5f, 1.0f)}, 	// Lower right corner
+    Vertex{glm::vec3( 0.0f,  0.8f,  0.0f), glm::vec4(0.3f, 0.8f, 0.5f, 1.0f)}   // Lower right corner
     };
 
     // Indices combinations that make up shape
@@ -601,61 +522,9 @@ void drawPyramid(GLMesh& mesh)
         3, 0, 4
     };
 
-    // Position range of x, y, z coords in vector
-    const GLuint floatsPerVertex = 3;
-    const GLuint floatsPerColor = 4;
-
-    // Binds the mesh to make it current
-    glBindVertexArray(mesh.vao);
-
-    // Binds the 1st buffer of mesh to make it current
-    glBindBuffer(GL_ARRAY_BUFFER, mesh.vbos[0]);
-    // Sends the vertex data to GPU
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(GLfloat), vertices.data(), GL_STATIC_DRAW);
-
-    // Calculates number of indices in vector for later use
-    mesh.nIndices = indices.size();
-    // Binds the 2nd buffer of mesh to make it current 
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.vbos[1]);
-    // Sends the index data to GPU
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(int), indices.data(), GL_STATIC_DRAW);
-
-    // Number of floats between each vertex point (how many bytes between vertex locations in vector)
-    GLint stride = sizeof(float) * (floatsPerVertex + floatsPerColor);
-
-    // Create Vertex Attribute Pointers for use in shader program
-    glVertexAttribPointer(0, floatsPerVertex, GL_FLOAT, GL_FALSE, stride, 0);
-    // Enables vertex attrib array starting of position 0
-    glEnableVertexAttribArray(0);
-
-    // Creates vertex attrib pointers for the color of vertices
-    glVertexAttribPointer(1, floatsPerColor, GL_FLOAT, GL_FALSE, stride, (char*)(sizeof(float) * floatsPerVertex));
-    glEnableVertexAttribArray(1);
-
-    // Unbinds the mesh so as to not modify it anymore
-    glBindVertexArray(0);
-}
-
-
-
-// Destryoys Mesh 
-// ______________
-void UDestroyMesh(GLMesh& mesh)
-{
-    // Deletes vao position of mesh
-    glDeleteVertexArrays(1, &mesh.vao);
-    // Deletes vbo position of mesh
-    glDeleteBuffers(2, mesh.vbos);
-}
-
-
-
-// Generates the VAO's and VBO's for given mesh
-// ____________________________________________
-void generateVAO_VBOS(GLMesh& mesh)
-{
-    glGenVertexArrays(1, &mesh.vao);
-    glGenBuffers(2, mesh.vbos);
+    // Returns a new Mesh
+    Mesh pyramid(vertices, indices);
+    return pyramid;
 }
 
 
@@ -706,14 +575,17 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
 }
 
 
+
 // Handles the mouse scroll wheel events
 // _____________________________________
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
     cout << "Mouse Scroll " << yoffset << endl;
-    speed -= yoffset * 2;
-    if (speed > 100.0f)
-        speed = 30.0f;
+    // Increase movement speed in window
+    speed -= yoffset * 4;
+    // Boundaries for speed
+    if (speed > 200.0f)
+        speed = 200.0f;
     if (speed < 5.0f)
         speed = 5.0f;
 }
