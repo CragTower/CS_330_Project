@@ -24,7 +24,7 @@ using namespace std; // Standard namespace
 namespace
 {
     // Variable for window title
-    const char* const WINDOW_TITLE = "CS_330_Project_Milestone_4.5"; 
+    const char* const WINDOW_TITLE = "CS_330_Project_Milestone_5.5"; 
 
     // Variables for window width and height
     const int WINDOW_WIDTH = 800;
@@ -32,6 +32,11 @@ namespace
 
     // Global variable to hold main GLFW window
     GLFWwindow* gWindow = nullptr;
+
+    // Texture ID's
+    GLuint textureIdPenHead;
+    GLuint textureIdBody;
+    GLuint textureIdFloor;
 
     // FIXME: Create Camera class
     // Camera position variables
@@ -121,7 +126,7 @@ int main(int argc, char* argv[])
     Shader newShader(vertexShaderSource, fragmentShaderSource);
     
     // Sends shape information to GPU
-    Mesh cylinder   = drawCylinder(1.2f, 0.1f, 100);
+    Mesh cylinder   = drawCylinder(0.6f, 0.05f, 100);
     Mesh pyramid    = drawPyramid();
     Mesh floor      = drawPlane();
 
@@ -258,7 +263,7 @@ void processInput(GLFWwindow* window)
 
 
 
-//
+// 
 void toggleInput(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
     // Swaps between perspective view and orthogonal view
@@ -355,7 +360,7 @@ static Mesh drawPlane()
 }
 
 
-
+// FIXME: Refactor code to calc a bottom and top circle radius to make cones or cylinders
 /*
     -------------------------------------
     Calculates vertices for cylinder
@@ -385,7 +390,7 @@ static Mesh drawCylinder(GLfloat height, GLfloat radius, int numSlices)
     // Creates top and bottom vertices for side of cylinder
     for (int i = 0; i < 2; ++i)
     {
-        float h = (-height / 2.0f) + (i * height);  // Determines height
+        float h = i * height;//(-height / 2.0f) + (i * height);  // Determines height
 
         for (int j = 0, k = 0; j <= numSlices; j++, k += 3)
         {
@@ -409,7 +414,7 @@ static Mesh drawCylinder(GLfloat height, GLfloat radius, int numSlices)
     // Creates top and bottom vertices for the "lids" of cylinder
     for (int i = 0; i < 2; i++)
     {
-        float h = -height / 2.0f + i * height;      // determines height
+        float h = i * height;//-height / 2.0f + i * height;      // determines height
 
         // Center point
         //-----vertexArray.push_back(0);
