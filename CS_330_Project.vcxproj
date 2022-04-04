@@ -72,7 +72,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>C:\OpenGL\glm;C:\OpenGL\GLFW\include;C:\OpenGL\GLEW\include;C:\OpenGL\GLAD;$(IncludePath)</IncludePath>
+    <IncludePath>C:\OpenGL\stb;C:\OpenGL\glm;C:\OpenGL\GLFW\include;C:\OpenGL\GLEW\include;C:\OpenGL\GLAD;$(IncludePath)</IncludePath>
     <LibraryPath>C:\OpenGL\GLFW\lib-vc2019;C:\OpenGL\GLEW\lib\Release\Win32;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -80,7 +80,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>C:\OpenGL\glm;C:\OpenGL\GLFW\include;C:\OpenGL\GLEW\include;C:\OpenGL\GLAD;$(IncludePath)</IncludePath>
+    <IncludePath>C:\OpenGL\stb;C:\OpenGL\glm;C:\OpenGL\GLFW\include;C:\OpenGL\GLEW\include;C:\OpenGL\GLAD;$(IncludePath)</IncludePath>
     <LibraryPath>C:\OpenGL\GLFW\lib-vc2019;C:\OpenGL\GLEW\lib\Release\Win32;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -149,6 +149,7 @@
     <ClCompile Include="Mesh.cpp" />
     <ClCompile Include="Shader.cpp" />
     <ClCompile Include="Source.cpp" />
+    <ClCompile Include="stb.cpp" />
     <ClCompile Include="Texture.cpp" />
     <ClCompile Include="VAO.cpp" />
     <ClCompile Include="VBO.cpp" />
@@ -157,7 +158,6 @@
     <ClInclude Include="EBO.h" />
     <ClInclude Include="Mesh.h" />
     <ClInclude Include="Shader.h" />
-    <ClInclude Include="stb_image.h" />
     <ClInclude Include="Texture.h" />
     <ClInclude Include="VAO.h" />
     <ClInclude Include="VBO.h" />

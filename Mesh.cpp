@@ -12,6 +12,7 @@ Mesh::Mesh(std::vector<Vertex>& verts, std::vector<GLuint>& indices)
 
 	VAO.LinkAttrib(VBO, 0, 3, GL_FLOAT, sizeof(Vertex), (void*)0);
 	VAO.LinkAttrib(VBO, 1, 4, GL_FLOAT, sizeof(Vertex), (void*)(3 * sizeof(float)));
+	VAO.LinkAttrib(VBO, 2, 2, GL_FLOAT, sizeof(Vertex), (void*)(7 * sizeof(float)));
 	
 	VAO.Unbind();
 	VBO.Unbind();

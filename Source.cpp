@@ -9,7 +9,7 @@
 */
 
 #include "Mesh.h"
-
+#include "Texture.h"
 #include <glm/gtx/transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
@@ -78,10 +78,12 @@ static Mesh drawPlane();
 // Vertex Shader Code (GLSL)
 // _________________________
 const GLchar* vertexShaderSource = GLSL(440,
-    layout(location = 0) in vec3 position; // Vertex data from Vertex Attrib Pointer 0
-layout(location = 1) in vec4 color;  // Color data from Vertex Attrib Pointer 1
+layout(location = 0) in vec3 position;  // Vertex data from Vertex Attrib Pointer 0
+layout(location = 1) in vec4 color;     // Color data from Vertex Attrib Pointer 1
+layout(location = 2) in vec2 texture;   // Texture data from Vertex Attrib Pointer 2
 
 out vec4 vertexColor; // variable to transfer color data to the fragment shader
+out vec2 vertexTexture;
 
 //Global variables for the transform matrices
 uniform mat4 model;
@@ -92,6 +94,7 @@ void main()
 {
     gl_Position = projection * view * model * vec4(position, 1.0f); // transforms vertices to clip coordinates
     vertexColor = color; // references incoming color data
+    vertexTexture = texture;
 }
 );
 
@@ -99,16 +102,17 @@ void main()
 // Fragment Shader Code (GLSL)
 // ___________________________
 const GLchar* fragmentShaderSource = GLSL(440,
-    in vec4 vertexColor; // Variable to hold incoming color data from vertex shader
+in vec4 vertexColor; // Variable to hold incoming color data from vertex shader
+in vec2 vertexTexture;
 
 out vec4 fragmentColor;
 
+uniform sampler2D tex0;
+uniform sampler2D tex1;
+
 void main()
 {
-    if (length(vertexColor) > 0)
-        fragmentColor = vec4(vertexColor);
-    else
-        fragmentColor = vec4(1.0f, 1.0f, 0.0f, 1.0f);
+    fragmentColor = texture(tex0, vertexTexture) + texture(tex1, vertexTexture);
 }
 );
 
@@ -129,6 +133,11 @@ int main(int argc, char* argv[])
     Mesh cylinder   = drawCylinder(0.6f, 0.05f, 100);
     Mesh pyramid    = drawPyramid();
     Mesh floor      = drawPlane();
+
+    // Creates and stores textures
+    Texture penHead("C:\\Users\\mount\\OneDrive\\Desktop\\PenHead.jpg", GL_TEXTURE0);
+    Texture planeFloor("C:\\Users\\mount\\OneDrive\\Desktop\\brickwall.jpg", GL_TEXTURE0);
+    Texture penBody("C:\\Users\\mount\\OneDrive\\Desktop\\PenBody.jpg", GL_TEXTURE0);
 
     // render loop
     // ___________
@@ -151,12 +160,23 @@ int main(int argc, char* argv[])
 
         // Draws cylinder on back buffer, and manages obj matrices
         URender(cylinder, newShader, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+        penBody.texLoc(newShader, "tex0", 2);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, penBody.ID);
         cylinder.Draw(newShader);
+        
         // Draws pyramid on back buffer, and manages obj matrices
-        URender(pyramid, newShader, 0.19f, 0.0f, 1.0f, 0.0f, 0.0f, 0.6f, 0.0f);
+        URender(pyramid, newShader, 0.1f, 0.0f, 1.0f, 0.0f, 0.0f, 0.6f, 0.0f);
+        penHead.texLoc(newShader, "tex0", 0);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, penHead.ID);
         pyramid.Draw(newShader);
+
         // Draws plane on back buffer, and manages obj matrices
         URender(floor, newShader, 4.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+        planeFloor.texLoc(newShader, "tex0", 1);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, planeFloor.ID);
         floor.Draw(newShader);
         
         // Swaps front buffer with back buffer 
@@ -168,6 +188,9 @@ int main(int argc, char* argv[])
     
     // Delete's shader program
     newShader.Delete();
+    penHead.Delete();
+    penBody.Delete();
+    planeFloor.Delete();
     // Delete's the glfw window
     glfwDestroyWindow(gWindow);
 
@@ -330,6 +353,8 @@ void URender(Mesh& Mesh, Shader newShader, GLfloat _scale, GLfloat rotX, GLfloat
     glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
     glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
+
+    
 }
 
 
@@ -340,11 +365,11 @@ static Mesh drawPlane()
     // Vector for plane vertices
     std::vector<Vertex> verts =
     {
-                // Vertices                               // Color
-        Vertex{glm::vec3(-0.5f, 0.0f, -0.5f), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)},      // Back left
-        Vertex{glm::vec3(-0.5f, 0.0f,  0.5f), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)},      // Front left
-        Vertex{glm::vec3( 0.5f, 0.0f, -0.5f), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)},      // Back right
-        Vertex{glm::vec3( 0.5f, 0.0f,  0.5f), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)}       // Front right
+                // Vertices                               // Color                     // Texture Coords
+        Vertex{glm::vec3(-0.5f, 0.0f, -0.5f), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), glm::vec2(0.0f, 0.0f)},      // Front left
+        Vertex{glm::vec3(-0.5f, 0.0f,  0.5f), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), glm::vec2(0.0f, 1.0f)},      // Back left
+        Vertex{glm::vec3( 0.5f, 0.0f, -0.5f), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), glm::vec2(1.0f, 0.0f)},      // Front right
+        Vertex{glm::vec3( 0.5f, 0.0f,  0.5f), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), glm::vec2(1.0f, 1.0f)}       // Back right
     };
 
     // Vector of indexes for triangle configuration
@@ -401,7 +426,7 @@ static Mesh drawCylinder(GLfloat height, GLfloat radius, int numSlices)
             //vertexArray.push_back(ux * radius);
             //vertexArray.push_back(h);
             //vertexArray.push_back(uz * radius);
-            vertexArray.push_back(Vertex{ glm::vec3(ux * radius, h, uz * radius), glm::vec4(0.0f, 0.0f, 0.5f, 1.0f) });
+            vertexArray.push_back(Vertex{ glm::vec3(ux * radius, h, uz * radius), glm::vec4(0.0f, 0.0f, 0.5f, 1.0f), glm::vec2(j * .01, h) });
             //vertexArray.push_back(Vertex{ });
         }
     }
@@ -508,23 +533,23 @@ static Mesh drawPyramid()
     // Vertex coords
     vector<Vertex> vertices =
     {
-        // Vertices			        // Colors (r, g, b)
-    Vertex{glm::vec3(-0.5f,  0.0f,  0.5f), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f)}, 	// Lower left corner
-    Vertex{glm::vec3(-0.5f,  0.0f, -0.5f), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f)},	// Upper left corner
-    Vertex{glm::vec3( 0.5f,	 0.0f, -0.5f), glm::vec4(0.0f, 0.0f, 1.0f, 1.0f)},  // Upper right corner
-    Vertex{glm::vec3( 0.5f,  0.0f,  0.5f), glm::vec4(0.3f, 0.8f, 0.5f, 1.0f)}, 	// Lower right corner
-    Vertex{glm::vec3( 0.0f,  0.8f,  0.0f), glm::vec4(0.3f, 0.8f, 0.5f, 1.0f)}   // Lower right corner
+        // Vertices			                      // Colors (r, g, b)            // Texture Coords
+    Vertex{glm::vec3(-0.5f,  0.0f,  0.5f), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f), glm::vec2(0.0f,  0.0f)}, 	// Lower left corner
+    Vertex{glm::vec3(-0.5f,  0.0f, -0.5f), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f), glm::vec2(0.25f, 0.0f)},	// Upper left corner
+    Vertex{glm::vec3( 0.5f,	 0.0f, -0.5f), glm::vec4(0.0f, 0.0f, 1.0f, 1.0f), glm::vec2(0.50f, 0.0f)},  // Upper right corner
+    Vertex{glm::vec3( 0.5f,  0.0f,  0.5f), glm::vec4(0.3f, 0.8f, 0.5f, 1.0f), glm::vec2(0.75f, 0.0f)}, 	// Lower right corner
+    Vertex{glm::vec3( 0.0f,  1.0f,  0.0f), glm::vec4(0.3f, 0.8f, 0.5f, 1.0f), glm::vec2(0.5f,  1.0f)}   // Lower right corner
     };
 
     // Indices combinations that make up shape
     vector<GLuint> indices =
     {
-        0, 1, 2,
-        0, 2, 3,
-        0, 1, 4,
-        1, 2, 4,
+        0, 3, 4,
         2, 3, 4,
-        3, 0, 4
+        1, 2, 4,
+        0, 1, 4,
+        0, 1, 2,
+        0, 2, 3
     };
 
     // Returns a new Mesh
