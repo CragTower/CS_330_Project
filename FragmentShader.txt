@@ -1,15 +1,61 @@
 // Fragment Shader Code (GLSL)
 // ___________________________
 #version 440 core
-in vec4 vertexColor; // Variable to hold incoming color data from vertex shader
+in vec3 vertexNormal; // For incoming normals
+in vec3 vertexFragmentPos; // For incoming fragment position
 in vec2 vertexTexture;
 
-out vec4 fragmentColor;
+out vec4 fragmentColor; // For outgoing cube color to the GPU
 
-uniform sampler2D tex0;
-uniform sampler2D tex1;
+// Uniform / Global variables for object color, light color, light position, and camera/view position
+uniform vec3 objectColor;
+uniform vec3 lightColor;
+uniform vec3 lightColorFill;    // For second light source
+uniform vec3 lightPos;
+uniform vec3 lightPosFill;      // For second light source
+uniform vec3 viewPosition;
+uniform sampler2D uTexture;     // Useful when working with multiple textures
+//uniform vec2 uvScale;
+
+// User defined GLSL function
+vec3 calcPhongLight(vec3 lightPosition, vec3 lightCol, float ambientStrength);
 
 void main()
 {
-    fragmentColor = texture(tex0, vertexTexture) + texture(tex1, vertexTexture);
+    // Calculate phong lighting model for light object positions
+    vec3 phong = calcPhongLight(lightPos, lightColor, 0.2f);
+    // Second light position calculation
+    // phong += calcPhongLight(lightPosFill, lightColorFill, 0.1f);
+
+    fragmentColor = vec4(phong, 1.0); // Send lighting results to GPU
+}
+
+// Phong lighting model calculations for ambient, diffuse, and specular lights
+vec3 calcPhongLight(vec3 lightPosition, vec3 lightCol, float ambientStrength)
+{
+    //Calculate Ambient lighting*/
+    //float ambientStrength = 0.1f; // Set ambient or global lighting strength
+    vec3 ambient = ambientStrength * lightCol; // Generate ambient light color
+
+    //Calculate Diffuse lighting*/
+    vec3 norm = normalize(vertexNormal); // Normalize vectors to 1 unit
+    vec3 lightDirection = normalize(lightPosition - vertexFragmentPos); // Calculate distance (light direction) between light source and fragments/pixels on cube
+    float impact = max(dot(norm, lightDirection), 0.0);// Calculate diffuse impact by generating dot product of normal and light
+    vec3 diffuse = impact * lightCol; // Generate diffuse light color
+
+    //Calculate Specular lighting*/
+    float specularIntensity = 0.8f; // Set specular light strength
+    float highlightSize = 16.0f; // Set specular highlight size
+    vec3 viewDir = normalize(viewPosition - vertexFragmentPos); // Calculate view direction
+    vec3 reflectDir = reflect(-lightDirection, norm);// Calculate reflection vector
+    //Calculate specular component
+    float specularComponent = pow(max(dot(viewDir, reflectDir), 0.0), highlightSize);
+    vec3 specular = specularIntensity * specularComponent * lightCol;
+
+    // Texture holds the color to be used for all three components
+    vec4 textureColor = texture(uTexture, vertexTexture);     //  * uvScale
+
+    // Calculate phong result
+    vec3 phong = (ambient + diffuse + specular) * textureColor.xyz;
+    return phong;
 }

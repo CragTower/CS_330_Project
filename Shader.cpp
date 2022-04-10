@@ -2,6 +2,7 @@
 
 std::string getFileInfo(const char* filename)
 {
+    // Reads in data from file
     std::ifstream in(filename, std::ios::binary);
     if (in)
     {
@@ -18,9 +19,11 @@ std::string getFileInfo(const char* filename)
 
 Shader::Shader(const char* vertexShaderFile, const char* fragmentShaderFile)
 {
+    // Assigns string data from files to local variables
     std::string vertexGLSLCode = getFileInfo(vertexShaderFile);
     std::string fragmentGLSLCode = getFileInfo(fragmentShaderFile);
 
+    // Converts string data from files to const char arrays
     const char* vertexSource = vertexGLSLCode.c_str();
     const char* fragmentSource = fragmentGLSLCode.c_str();
     

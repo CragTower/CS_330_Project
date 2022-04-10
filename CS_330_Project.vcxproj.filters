@@ -67,12 +67,6 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="..\..\..\..\Desktop\PenBody.jpg">
-      <Filter>Resource Files\Textures</Filter>
-    </Image>
-    <Image Include="PenHead.jpg">
-      <Filter>Resource Files\Textures</Filter>
-    </Image>
     <Image Include="brickwall.jpg">
       <Filter>Resource Files\Textures</Filter>
     </Image>
@@ -88,6 +82,12 @@
       <Filter>Resource Files\Shaders</Filter>
     </Text>
     <Text Include="FragmentShader.txt">
+      <Filter>Resource Files\Shaders</Filter>
+    </Text>
+    <Text Include="LightSourceVertexShader.txt">
+      <Filter>Resource Files\Shaders</Filter>
+    </Text>
+    <Text Include="LightSourceFragShader.txt">
       <Filter>Resource Files\Shaders</Filter>
     </Text>
   </ItemGroup>

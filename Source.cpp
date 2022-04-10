@@ -1,11 +1,8 @@
 /*
 **	Justin Holmes
 **	Computer Graphics CS-330
-**	The purpose of this program is to draw and render a 3D environment
-**	This update includes a cylinder with a pyramid to resemble a pen with a plane
-**  underneath.  I've also included movement functionality allowing you to move in 
-**  each cardinal direction, up and down, control the speed at which you move,
-**  and the ability to swith between perspective and orthogonal view.
+**	The purpose of this program is to draw and render a 3D environment.
+**	This update includes the introduction of a new light source.
 */
 
 #include "Mesh.h"
@@ -19,7 +16,7 @@ using namespace std; // Standard namespace
 namespace
 {
     // Variable for window title
-    const char* const WINDOW_TITLE = "CS_330_Project_Milestone_5.5"; 
+    const char* const WINDOW_TITLE = "CS_330_Project_Milestone_6.5"; 
 
     // Variables for window width and height
     const int WINDOW_WIDTH = 1024;
@@ -48,6 +45,15 @@ namespace
     bool isViewPort = true;             // Is the current view "perspective"
 
     glm::mat4 projection;               // Variable to hold projection matrix
+
+    // Light color
+    glm::vec3 gLightColor1(1.0f, 1.0f, 1.0f);
+    //glm::vec3 gLightColor2(1.0f, 1.0f, 1.0f);
+
+    // Light position
+    glm::vec3 gLightPositionKey(-1.5f, 1.0f, 0.0f);
+    //glm::vec3 gLightPositionFill(-1.5f, 0.5f, -1.0f);
+    glm::vec3 gLightScale(0.1f);
 }
 
 // User defined functions
@@ -57,6 +63,7 @@ void processInput(GLFWwindow* window);
 void toggleInput(GLFWwindow* window, int key, int scancode, int action, int mods);
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+void URenderLight(Mesh& Mesh, Shader newLightShader);
 void URender(Mesh& Mesh, Shader newShader, GLfloat _scale, GLfloat rotX, GLfloat rotY, GLfloat rotZ, GLfloat translX, GLfloat translY, GLfloat translZ);
 static Mesh drawCylinder(GLfloat height, GLfloat radius, int numSlices);
 static Mesh drawPyramid();
@@ -72,6 +79,8 @@ int main(int argc, char* argv[])
 
     // Creates new shader program
     Shader newShader("VertexShader.txt", "FragmentShader.txt");
+    // Creates new light shader program
+    Shader newLightShader("LightSourceVertexShader.txt", "LightSourceFragShader.txt");
     
     
 
@@ -80,6 +89,7 @@ int main(int argc, char* argv[])
     Mesh pyramid    = drawPyramid();
     Mesh floor      = drawPlane();
 
+    // Creates and stores textures
     Texture penHead("PenHead1.jpg", GL_TEXTURE0);
     Texture penBody("PenBody1.jpg", GL_TEXTURE0);
     Texture planeFloor("brickwall.jpg", GL_TEXTURE0);
@@ -87,8 +97,6 @@ int main(int argc, char* argv[])
     penHead.texLoc(newShader, "tex0", 0);
     penBody.texLoc(newShader, "tex0", 0);
     planeFloor.texLoc(newShader, "tex0", 0);
-    // Creates and stores textures
-    
 
     // render loop
     // ___________
@@ -126,6 +134,10 @@ int main(int argc, char* argv[])
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, planeFloor.ID);
         floor.Draw(newShader);
+
+        // Draws the light source in the shape of a plane
+        URenderLight(pyramid, newLightShader);
+        floor.Draw(newLightShader);
         
         // Swaps front buffer with back buffer 
         glfwSwapBuffers(gWindow);
@@ -134,8 +146,10 @@ int main(int argc, char* argv[])
         glfwPollEvents();
     }
     
-    // Delete's shader program
+    // Delete's shader programs
     newShader.Delete();
+    newLightShader.Delete();
+    // Delete's textures
     penHead.Delete();
     penBody.Delete();
     planeFloor.Delete();
@@ -143,6 +157,7 @@ int main(int argc, char* argv[])
     // Terminates the program successfully
     exit(EXIT_SUCCESS);
 }
+
 
 
 // Initialize GLFW, GLEW, and create a window
@@ -232,7 +247,8 @@ void processInput(GLFWwindow* window)
 
 
 
-// 
+// Switches between perspective and orthogonal view
+// ________________________________________________
 void toggleInput(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
     // Swaps between perspective view and orthogonal view
@@ -244,6 +260,7 @@ void toggleInput(GLFWwindow* window, int key, int scancode, int action, int mods
             isViewPort = true;
     }
 }
+
 
 
 // When window is resized the viewport is also changed
@@ -299,6 +316,52 @@ void URender(Mesh& Mesh, Shader newShader, GLfloat _scale, GLfloat rotX, GLfloat
     glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
     glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
+
+    // Reference matrix uniforms from the Cube Shader program for the cub color, light color, light position, and camera position
+    GLint lightColorLoc = glGetUniformLocation(newShader.ID, "lightColor");
+    GLint lightColorFillLoc = glGetUniformLocation(newShader.ID, "lightColorFill");
+    GLint lightPositionLoc = glGetUniformLocation(newShader.ID, "lightPos");
+    GLint lightPositionFillLoc = glGetUniformLocation(newShader.ID, "lightPosFill");
+    GLint viewPositionLoc = glGetUniformLocation(newShader.ID, "viewPosition");
+
+    glUniform3f(lightColorLoc, gLightColor1.r, gLightColor1.g, gLightColor1.b);
+    //glUniform3f(lightColorFillLoc, gLightColor2.r, gLightColor2.g, gLightColor2.b);
+    glUniform3f(lightPositionLoc, gLightPositionKey.x, gLightPositionKey.y, gLightPositionKey.z);
+    //glUniform3f(lightPositionFillLoc, gLightPositionFill.x, gLightPositionFill.y, gLightPositionFill.z);
+    glUniform3f(viewPositionLoc, cameraPos.x, cameraPos.y, cameraPos.z);
+}
+
+
+
+void URenderLight(Mesh& Mesh, Shader newLightShader)
+{
+    glUseProgram(newLightShader.ID);
+
+    //Transform the smaller cube used as a visual que for the light source
+    glm::mat4 model = glm::translate(gLightPositionKey) * glm::scale(gLightScale);
+
+    glm::mat4 view = glm::mat4(1.0f);
+    view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
+
+    // Swaps between perspective view and orthogonal view
+    if (isViewPort)
+        projection = glm::perspective(glm::radians(fov), (GLfloat)WINDOW_WIDTH / (GLfloat)WINDOW_HEIGHT, 0.1f, 100.0f);
+    else
+        projection = glm::ortho(-2.0f, 2.0f, -2.0f, 2.0f, 0.1f, 100.0f);
+
+    // Reference matrix uniforms from the Lamp Shader program
+    GLint modelLoc = glGetUniformLocation(newLightShader.ID, "model");
+    GLint viewLoc = glGetUniformLocation(newLightShader.ID, "view");
+    GLint projLoc = glGetUniformLocation(newLightShader.ID, "projection");
+
+    // Pass matrix data to the Lamp Shader program's matrix uniforms
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
+
+    // Deactivate the Vertex Array Object and shader program
+    glBindVertexArray(0);
+    glUseProgram(0);
 }
 
 
@@ -309,11 +372,11 @@ static Mesh drawPlane()
     // Vector for plane vertices
     std::vector<Vertex> verts =
     {
-                // Vertices                               // Color                     // Texture Coords
-        Vertex{glm::vec3(-0.5f, 0.0f, -0.5f), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), glm::vec2(0.0f, 0.0f)},      // Front left
-        Vertex{glm::vec3(-0.5f, 0.0f,  0.5f), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), glm::vec2(0.0f, 1.0f)},      // Back left
-        Vertex{glm::vec3( 0.5f, 0.0f, -0.5f), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), glm::vec2(1.0f, 0.0f)},      // Front right
-        Vertex{glm::vec3( 0.5f, 0.0f,  0.5f), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), glm::vec2(1.0f, 1.0f)}       // Back right
+                // Vertices                          // Normal                    // Texture Coords
+        Vertex{glm::vec3(-0.5f, 0.0f, -0.5f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec2(0.0f, 0.0f)},      // Back left
+        Vertex{glm::vec3(-0.5f, 0.0f,  0.5f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec2(0.0f, 1.0f)},      // Front left
+        Vertex{glm::vec3( 0.5f, 0.0f, -0.5f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec2(1.0f, 0.0f)},      // Back right
+        Vertex{glm::vec3( 0.5f, 0.0f,  0.5f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec2(1.0f, 1.0f)}       // Front right
     };
 
     // Vector of indexes for triangle configuration
@@ -370,7 +433,7 @@ static Mesh drawCylinder(GLfloat height, GLfloat radius, int numSlices)
             //vertexArray.push_back(ux * radius);
             //vertexArray.push_back(h);
             //vertexArray.push_back(uz * radius);
-            vertexArray.push_back(Vertex{ glm::vec3(ux * radius, h, uz * radius), glm::vec4(0.0f, 0.0f, 0.5f, 1.0f), glm::vec2(j * .01, h) });
+            vertexArray.push_back(Vertex{ glm::vec3(ux * radius, h, uz * radius), glm::vec3(ux, uy, uz), glm::vec2(j * .01, h) });
             //vertexArray.push_back(Vertex{ });
         }
     }
@@ -477,33 +540,38 @@ static Mesh drawPyramid()
     // Vertex coords
     vector<Vertex> vertices =
     {
-        // Vertices			                      // Colors (r, g, b)            // Texture Coords
-    Vertex{glm::vec3(-0.5f, 0.0f,  0.5f), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f), glm::vec2(0.0f, 0.0f)}, 	// (0)Front left corner
-    Vertex{glm::vec3(-0.5f, 0.0f,  0.5f), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f), glm::vec2(1.0f, 0.0f)}, 	// (1)Front left corner
+        // Vertices			                      // Normals            // Texture Coords
+    Vertex{glm::vec3(-0.5f, 0.0f, -0.5f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec2(0.0f, 0.0f)}, 	// (0)Front left corner
+    Vertex{glm::vec3( 0.5f, 0.0f, -0.5f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec2(1.0f, 0.0f)}, 	// (1)Front left corner
+    Vertex{glm::vec3( 0.5f, 0.0f,  0.5f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec2(1.0f, 1.0f)},
+    Vertex{glm::vec3(-0.5f, 0.0f,  0.5f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec2(0.0f, 1.0f)},
 
-    Vertex{glm::vec3(-0.5f, 0.0f, -0.5f), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f), glm::vec2(0.0f, 1.0f)},	// (2)Back left corner
-    Vertex{glm::vec3(-0.5f, 0.0f, -0.5f), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f), glm::vec2(1.0f, 0.0f)},	// (3)Back left corner
-    Vertex{glm::vec3(-0.5f, 0.0f, -0.5f), glm::vec4(0.0f, 1.0f, 0.0f, 1.0f), glm::vec2(0.0f, 0.0f)},	// (4)Back left corner
-
-    Vertex{glm::vec3(0.5f,	0.0f, -0.5f), glm::vec4(0.0f, 0.0f, 1.0f, 1.0f), glm::vec2(1.0f, 1.0f)},    // (5)Back right corner
-    Vertex{glm::vec3(0.5f,	0.0f, -0.5f), glm::vec4(0.0f, 0.0f, 1.0f, 1.0f), glm::vec2(1.0f, 0.0f)},    // (6)Back right corner
-    Vertex{glm::vec3(0.5f,	0.0f, -0.5f), glm::vec4(0.0f, 0.0f, 1.0f, 1.0f), glm::vec2(0.0f, 0.0f)},    // (7)Back right corner
-
-    Vertex{glm::vec3(0.5f,  0.0f,  0.5f), glm::vec4(0.3f, 0.8f, 0.5f, 1.0f), glm::vec2(1.0f, 0.0f)}, 	// (8)Front right corner
-    Vertex{glm::vec3(0.5f,  0.0f,  0.5f), glm::vec4(0.3f, 0.8f, 0.5f, 1.0f), glm::vec2(0.0f, 0.0f)}, 	// (9)Front right corner
-
-    Vertex{glm::vec3(0.0f,  1.0f,  0.0f), glm::vec4(0.3f, 0.8f, 0.5f, 1.0f), glm::vec2(0.5f, 1.0f)}     // (10)Lower right corner
+    Vertex{glm::vec3(-0.5f, 0.0f, -0.5f), glm::vec3( 0.0f, 0.0f, -1.0), glm::vec2(0.0f, 0.0f)},
+    Vertex{glm::vec3( 0.0f, 0.8f,  0.0f), glm::vec3( 0.0f, 0.0f, -1.0), glm::vec2(0.5f, 1.0f)},
+    Vertex{glm::vec3( 0.5f, 0.0f, -0.5f), glm::vec3( 0.0f, 0.0f, -1.0), glm::vec2(1.0f, 0.0f)},
+                                                      
+    Vertex{glm::vec3( 0.5f, 0.0f, -0.5f), glm::vec3( 1.0f, 0.0f, 0.0f), glm::vec2(0.0f, 0.0f)},
+    Vertex{glm::vec3( 0.0f, 0.8f,  0.0f), glm::vec3( 1.0f, 0.0f, 0.0f), glm::vec2(0.5f, 1.0f)},
+    Vertex{glm::vec3( 0.5f, 0.0f,  0.5f), glm::vec3( 1.0f, 0.0f, 0.0f), glm::vec2(1.0f, 0.0f)},
+                                                      
+    Vertex{glm::vec3( 0.5f, 0.0f,  0.5f), glm::vec3( 0.0f, 0.0f, 1.0f), glm::vec2(0.0f, 0.0f)},
+    Vertex{glm::vec3( 0.0f, 0.8f,  0.0f), glm::vec3( 0.0f, 0.0f, 1.0f), glm::vec2(0.5f, 1.0f)},
+    Vertex{glm::vec3(-0.5f, 0.0f,  0.5f), glm::vec3( 0.0f, 0.0f, 1.0f), glm::vec2(1.0f, 0.0f)},
+    
+    Vertex{glm::vec3(-0.5f, 0.0f,  0.5f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec2(0.0f, 0.0f)},
+    Vertex{glm::vec3( 0.0f, 0.8f,  0.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec2(0.5f, 1.0f)},
+    Vertex{glm::vec3(-0.5f, 0.0f, -0.5f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec2(1.0f, 0.0f)}    // (10)Lower right corner
     };
 
     // Indices combinations that make up shape
     vector<GLuint> indices =
     {
-        0, 2, 5,
-        0, 8, 5,
-        0, 8, 10,
-        9, 6, 10,
-        7, 3, 10,
-        4, 1, 10
+        0, 1, 2,
+        0, 2, 3,
+        4, 5, 6,
+        7, 8, 9,
+        10, 11, 12,
+        13, 14, 15
     };
 
     // Returns a new Mesh

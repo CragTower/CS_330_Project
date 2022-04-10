@@ -165,14 +165,14 @@
     <ClInclude Include="VBO.h" />
   </ItemGroup>
   <ItemGroup>
-    <Image Include="..\..\..\..\Desktop\PenBody.jpg" />
     <Image Include="brickwall.jpg" />
     <Image Include="PenBody1.jpg" />
-    <Image Include="PenHead.jpg" />
     <Image Include="PenHead1.jpg" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="FragmentShader.txt" />
+    <Text Include="LightSourceFragShader.txt" />
+    <Text Include="LightSourceVertexShader.txt" />
     <Text Include="VertexShader.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

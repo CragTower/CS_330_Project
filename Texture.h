@@ -11,12 +11,18 @@
 class Texture
 {
 	public:
+		// Unique ID for each instance
 		GLuint ID;
+		// Constructor
 		Texture(const char* filename, GLenum location);
-		void texLoc(Shader& shader, const char* uniform, GLuint unit);
 
+		// Sends texture data to GPU
+		void texLoc(Shader& shader, const char* uniform, GLuint unit);
+		// Binds texture to make it current
 		void Bind();
+		// Unbinds texture so it can not be modified further
 		void Unbind();
+		// Deletes texture
 		void Delete();
 };
 

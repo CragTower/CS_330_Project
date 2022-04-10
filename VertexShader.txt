@@ -2,10 +2,11 @@
 // _________________________
 #version 440 core
 layout(location = 0) in vec3 position;  // Vertex data from Vertex Attrib Pointer 0
-layout(location = 1) in vec4 color;     // Color data from Vertex Attrib Pointer 1
+layout(location = 1) in vec3 normal;    // Color data from Vertex Attrib Pointer 1
 layout(location = 2) in vec2 texture;   // Texture data from Vertex Attrib Pointer 2
 
-out vec4 vertexColor; // variable to transfer color data to the fragment shader
+out vec3 vertexNormal;
+out vec3 vertexFragmentPos;
 out vec2 vertexTexture;
 
 //Global variables for the transform matrices
@@ -16,6 +17,9 @@ uniform mat4 projection;
 void main()
 {
     gl_Position = projection * view * model * vec4(position, 1.0f); // transforms vertices to clip coordinates
-    vertexColor = color; // references incoming color data
+    
+    vertexFragmentPos = vec3(model * vec4(position, 1.0f));
+
+    vertexNormal = mat3(transpose(inverse(model))) * normal;
     vertexTexture = texture;
 }
