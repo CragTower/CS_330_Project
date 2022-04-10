@@ -1,0 +1,15 @@
+// Fragment Shader Code (GLSL)
+// ___________________________
+#version 440 core
+in vec4 vertexColor; // Variable to hold incoming color data from vertex shader
+in vec2 vertexTexture;
+
+out vec4 fragmentColor;
+
+uniform sampler2D tex0;
+uniform sampler2D tex1;
+
+void main()
+{
+    fragmentColor = texture(tex0, vertexTexture) + texture(tex1, vertexTexture);
+}

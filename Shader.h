@@ -6,6 +6,12 @@
 #include <glm/glm.hpp>
 #include <cstdlib>
 #include <iostream>
+#include <string>
+#include <fstream>
+#include <sstream>
+#include <cerrno>
+
+std::string getFileInfo(const char* filename);
 
 class Shader
 {

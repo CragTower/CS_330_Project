@@ -1,7 +1,29 @@
 #include "Shader.h"
 
-Shader::Shader(const char* vertexShaderSource, const char* fragmentShaderSource)
+std::string getFileInfo(const char* filename)
 {
+    std::ifstream in(filename, std::ios::binary);
+    if (in)
+    {
+        std::string contents;
+        in.seekg(0, std::ios::end);
+        contents.resize(in.tellg());
+        in.seekg(0, std::ios::beg);
+        in.read(&contents[0], contents.size());
+        in.close();
+        return(contents);
+    }
+    throw(errno);
+}
+
+Shader::Shader(const char* vertexShaderFile, const char* fragmentShaderFile)
+{
+    std::string vertexGLSLCode = getFileInfo(vertexShaderFile);
+    std::string fragmentGLSLCode = getFileInfo(fragmentShaderFile);
+
+    const char* vertexSource = vertexGLSLCode.c_str();
+    const char* fragmentSource = fragmentGLSLCode.c_str();
+    
     // Compilation and linkage error reporting
     int success = 0;
     char infoLog[512];
@@ -11,7 +33,7 @@ Shader::Shader(const char* vertexShaderSource, const char* fragmentShaderSource)
 
     // Create the vertex shader object
     GLuint vertexShaderID = glCreateShader(GL_VERTEX_SHADER);
-	glShaderSource(vertexShaderID, 1, &vertexShaderSource, NULL);
+	glShaderSource(vertexShaderID, 1, &vertexSource, NULL);
 
     // Compile the vertex shader, and print compilation errors (if any)
     glCompileShader(vertexShaderID);
@@ -24,7 +46,7 @@ Shader::Shader(const char* vertexShaderSource, const char* fragmentShaderSource)
 
 	// Create the fragment shader object
     GLuint fragmentShaderID = glCreateShader(GL_FRAGMENT_SHADER);
-	glShaderSource(fragmentShaderID, 1, &fragmentShaderSource, NULL);
+	glShaderSource(fragmentShaderID, 1, &fragmentSource, NULL);
 
     // Compile the fragment shader, and print compilation errors (if any)
     glCompileShader(fragmentShaderID);
