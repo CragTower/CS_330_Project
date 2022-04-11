@@ -24,12 +24,14 @@ Mesh::Mesh(std::vector<Vertex>& verts, std::vector<GLuint>& indices)
 	EBO.Unbind();
 }
 
-void Mesh::Draw(Shader& shader)
+void Mesh::Draw(Shader& shader, Texture& texture)
 {
 	// Activates Shader to make it current
 	shader.Activate();
 	// Activates VAO to make it current
 	VAO.Bind();
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, texture.ID);
 	// Draws VAO data to the back buffer
 	glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
 	

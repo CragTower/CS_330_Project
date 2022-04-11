@@ -81,8 +81,6 @@ int main(int argc, char* argv[])
     Shader newShader("VertexShader.txt", "FragmentShader.txt");
     // Creates new light shader program
     Shader newLightShader("LightSourceVertexShader.txt", "LightSourceFragShader.txt");
-    
-    
 
     // Sends shape information to GPU
     Mesh cylinder   = drawCylinder(1.0f, 0.05f, 100);
@@ -97,7 +95,7 @@ int main(int argc, char* argv[])
     penHead.texLoc(newShader, "tex0", 0);
     penBody.texLoc(newShader, "tex0", 0);
     planeFloor.texLoc(newShader, "tex0", 0);
-
+    
     // render loop
     // ___________
     while (!glfwWindowShouldClose(gWindow))
@@ -119,25 +117,19 @@ int main(int argc, char* argv[])
 
         // Draws cylinder on back buffer, and manages obj matrices
         URender(cylinder, newShader, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, penBody.ID);
-        cylinder.Draw(newShader);
+        cylinder.Draw(newShader, penBody);
         
         // Draws pyramid on back buffer, and manages obj matrices
         URender(pyramid, newShader, 0.1f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, penHead.ID);
-        pyramid.Draw(newShader);
+        pyramid.Draw(newShader, penHead);
 
         // Draws plane on back buffer, and manages obj matrices
         URender(floor, newShader, 4.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, planeFloor.ID);
-        floor.Draw(newShader);
+        floor.Draw(newShader, planeFloor);
 
         // Draws the light source in the shape of a plane
         URenderLight(pyramid, newLightShader);
-        floor.Draw(newLightShader);
+        floor.Draw(newLightShader, planeFloor);
         
         // Swaps front buffer with back buffer 
         glfwSwapBuffers(gWindow);

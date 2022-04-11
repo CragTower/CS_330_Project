@@ -23,8 +23,6 @@ Texture::Texture(const char* filename, GLenum location)
 	unsigned char* image = stbi_load(filename, &width, &height, &nChannels, 0);
 	if (image)
 	{
-		
-		
 		if (nChannels == 3)
 			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image);
 		else

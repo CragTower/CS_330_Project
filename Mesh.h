@@ -4,6 +4,7 @@
 #include "VAO.h"
 #include "EBO.h"
 #include "Shader.h"
+#include "Texture.h"
 
 class Mesh
 {
@@ -19,7 +20,7 @@ class Mesh
 		Mesh(std::vector<Vertex>& verts, std::vector<GLuint>& indices);
 
 		// Draws object
-		void Draw(Shader& shader);
+		void Draw(Shader& shader, Texture& texture);
 		// Deletes Mesh
 		void Delete();
 };
