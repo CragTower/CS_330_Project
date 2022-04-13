@@ -79,6 +79,9 @@
     <Image Include="Dr_Pepper_Can.jpg">
       <Filter>Resource Files\Textures</Filter>
     </Image>
+    <Image Include="soda_can_top.jpg">
+      <Filter>Resource Files\Textures</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <Text Include="VertexShader.txt">

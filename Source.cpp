@@ -51,7 +51,7 @@ namespace
     //glm::vec3 gLightColor2(1.0f, 1.0f, 1.0f);
 
     // Light position
-    glm::vec3 gLightPositionKey(-1.5f, 0.5f, 0.0f);
+    glm::vec3 gLightPositionKey(-1.5f, 1.3f, 0.0f);
     //glm::vec3 gLightPositionFill(-1.5f, 0.5f, -1.0f);
     glm::vec3 gLightScale(0.1f);
 }
@@ -85,6 +85,7 @@ int main(int argc, char* argv[])
 
     // Sends shape information to GPU
     Mesh cylCan     = drawCylinder(1.0f, 0.3f, 100);
+    Mesh cylCanLid  = drawCylinder(0.001f, 0.3f, 100);
     Mesh cylinder   = drawCylinder(1.0f, 0.05f, 100);
     Mesh pyramid    = drawPyramid();
     Mesh floor      = drawPlane();
@@ -92,11 +93,13 @@ int main(int argc, char* argv[])
 
     // Creates and stores textures
     Texture sodaCanBody("Dr_Pepper_Can.jpg", GL_TEXTURE0);
+    Texture sodaCanTop("soda_can_top.jpg", GL_TEXTURE0);
     Texture penHead("PenHead1.jpg", GL_TEXTURE0);
     Texture penBody("PenBody1.jpg", GL_TEXTURE0);
     Texture planeFloor("brickwall.jpg", GL_TEXTURE0);
     
     sodaCanBody.texLoc(newShader, "tex0", 0);
+    sodaCanTop.texLoc(newShader, "tex0", 0);
     penHead.texLoc(newShader, "tex0", 0);
     penBody.texLoc(newShader, "tex0", 0);
     planeFloor.texLoc(newShader, "tex0", 0);
@@ -125,6 +128,9 @@ int main(int argc, char* argv[])
 
         URender(cylCan, newShader, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f);
         cylCan.Draw(newShader, sodaCanBody);
+
+        URender(cylCanLid, newShader, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f);
+        cylCanLid.Draw(newShader, sodaCanTop);
 
         // Draws cylinder on back buffer, and manages obj matrices
         URender(cylinder, newShader, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f);
@@ -368,7 +374,8 @@ void URenderLight(Mesh& Mesh, Shader newLightShader)
 }
 
 
-
+// FIXME: Refactor code to auto generate plane with length and width from user input
+// FIXME: Refactor code into a class
 // Draws Plane
 static Mesh drawPlane()
 {
@@ -395,7 +402,8 @@ static Mesh drawPlane()
 }
 
 
-
+// FIXME: Refactor code to auto generate cube with length, width, and height user inputs
+// FIXME: Refactor code into a class
 // Draws rectangle object
 static Mesh drawCube()
 {
@@ -465,6 +473,7 @@ static Mesh drawCube()
 
 
 // FIXME: Refactor code to calc a bottom and top circle radius to make cones or cylinders
+// FIXME: Refactor code into a class
 /*
     -------------------------------------
     Calculates vertices for cylinder
@@ -501,44 +510,38 @@ static Mesh drawCylinder(GLfloat height, GLfloat radius, int numSlices)
             float ux = circleArray[k];          // x location holder
             float uy = circleArray[k + 1];      // y location holder
             float uz = circleArray[k + 2];      // z location holder
-            // position vector
-            //vertexArray.push_back(ux * radius);
-            //vertexArray.push_back(h);
-            //vertexArray.push_back(uz * radius);
-            vertexArray.push_back(Vertex{ glm::vec3(ux * radius, h, uz * radius), glm::vec3(ux, uy, uz), glm::vec2(j * .01, h) });
-            //vertexArray.push_back(Vertex{ });
+            
+            vertexArray.push_back(Vertex{ glm::vec3(ux * radius, h, uz * radius), 
+                                          glm::vec3(ux, uy, uz),
+                                          glm::vec2(j * .01, h) });
         }
     }
-
+    
     // Determinces the center point for bottom and top circles for cylinder
     // Will be used for index vertex creation
-    int baseCenterIndex = (int)vertexArray.size() / 3;
+    int baseCenterIndex = (int)vertexArray.size();
     int topCenterIndex = baseCenterIndex + numSlices + 1;
 
     // Creates top and bottom vertices for the "lids" of cylinder
     for (int i = 0; i < 2; i++)
     {
-        float h = i * height;//-height / 2.0f + i * height;      // determines height
+        float h = i * height;    // determines height
+        float ny = -1 + i * 2;
 
-        // Center point
-        //-----vertexArray.push_back(0);
-        //-----vertexArray.push_back(h);
-        //-----vertexArray.push_back(0);
-        vertexArray.push_back(Vertex{ glm::vec3(0, h, 0), glm::vec4(0.0f, 0.0f, 1.0f, 1.0f) });
+        vertexArray.push_back(Vertex{ glm::vec3(0, h, 0), glm::vec3(0, ny, 0), glm::vec2(0.5f, 0.5f)});
 
         for (int j = 0, k = 0; j < numSlices; ++j, k += 3)
         {
             float ux = circleArray[k];      // x location holder
             float uz = circleArray[k + 2];  // z location holder
-            // Position vector
-            //-----vertexArray.push_back(ux * radius);
-            //-----vertexArray.push_back(h);
-            //-----vertexArray.push_back(uz * radius);
-            vertexArray.push_back(Vertex{ glm::vec3(ux * radius, h, uz * radius), glm::vec4(0.0f, 0.0f, 1.0f, 1.0f) });
+            
+            vertexArray.push_back(Vertex{ glm::vec3(ux * radius, h, uz * radius), 
+                                          glm::vec3(0, ny, 0),
+                                          glm::vec2(-ux * 0.5f + 0.5f, -uz * 0.5f + 0.5f)});
             
         }
     }
-
+    
     // Generate vector for indices mapping
     std::vector<GLuint> indices;
     int k1 = 0;                       // 1st vertex index at base
@@ -550,29 +553,29 @@ static Mesh drawCylinder(GLfloat height, GLfloat radius, int numSlices)
         // 2 triangles per sector
         // k1 => k1+1 => k2
         indices.push_back(k1);
-        indices.push_back(k1 + 1);
         indices.push_back(k2);
+        indices.push_back(k1 + 1);
 
         // k2 => k1+1 => k2+1
         indices.push_back(k2);
-        indices.push_back(k1 + 1);
         indices.push_back(k2 + 1);
+        indices.push_back(k1 + 1);
     }
-
+    
     // Indices for the base surface
     for (int i = 0, k = baseCenterIndex + 1; i < numSlices; ++i, ++k)
     {
         if (i < numSlices - 1)
         {
             indices.push_back(baseCenterIndex);
-            indices.push_back(k + 1);
             indices.push_back(k);
+            indices.push_back(k + 1);
         }
         else // last triangle
         {
             indices.push_back(baseCenterIndex);
-            indices.push_back(baseCenterIndex + 1);
             indices.push_back(k);
+            indices.push_back(baseCenterIndex + 1);
         }
     }
 
@@ -582,14 +585,14 @@ static Mesh drawCylinder(GLfloat height, GLfloat radius, int numSlices)
         if (i < numSlices - 1)
         {
             indices.push_back(topCenterIndex);
-            indices.push_back(k);
             indices.push_back(k + 1);
+            indices.push_back(k);
         }
         else // last triangle
         {
             indices.push_back(topCenterIndex);
-            indices.push_back(k);
             indices.push_back(topCenterIndex + 1);
+            indices.push_back(k);
         }
     }
 
@@ -599,7 +602,8 @@ static Mesh drawCylinder(GLfloat height, GLfloat radius, int numSlices)
 }
 
 
-
+// FIXME: Refactor code to auto generate a pyramid with length, width, height input parameters
+// FIXME: Refactor code into class
 /*
     -------------------------------------
     Calculates vertices for pyramid

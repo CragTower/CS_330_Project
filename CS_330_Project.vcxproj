@@ -169,6 +169,7 @@
     <Image Include="Dr_Pepper_Can.jpg" />
     <Image Include="PenBody1.jpg" />
     <Image Include="PenHead1.jpg" />
+    <Image Include="soda_can_top.jpg" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="FragmentShader.txt" />
