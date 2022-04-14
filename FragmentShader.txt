@@ -23,7 +23,7 @@ vec3 calcPhongLight(vec3 lightPosition, vec3 lightCol, float ambientStrength);
 void main()
 {
     // Calculate phong lighting model for light object positions
-    vec3 phong = calcPhongLight(lightPos, lightColor, 0.2f);
+    vec3 phong = calcPhongLight(lightPos, lightColor, 0.1f);
     // Second light position calculation
     // phong += calcPhongLight(lightPosFill, lightColorFill, 0.1f);
 

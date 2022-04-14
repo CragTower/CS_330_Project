@@ -170,6 +170,7 @@
     <Image Include="PenBody1.jpg" />
     <Image Include="PenHead1.jpg" />
     <Image Include="soda_can_top.jpg" />
+    <Image Include="whole_box.jpg" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="FragmentShader.txt" />
