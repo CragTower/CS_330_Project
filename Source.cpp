@@ -2,7 +2,9 @@
 **	Justin Holmes
 **	Computer Graphics CS-330
 **	The purpose of this program is to draw and render a 3D environment.
-**	This update includes the introduction of a new light source.
+**	This final update adds an additional lightsource with color, fixed texture coords for
+**  for all shape methods, and adds an oribting main light source to showcase the all 
+**  normal coords are mapped properly.  This also concludes the project for now.
 */
 
 #include "Mesh.h"
@@ -16,7 +18,7 @@ using namespace std; // Standard namespace
 namespace
 {
     // Variable for window title
-    const char* const WINDOW_TITLE = "CS_330_Project_Milestone_6.5"; 
+    const char* const WINDOW_TITLE = "CS_330_Project_Final"; 
 
     // Variables for window width and height
     const int WINDOW_WIDTH = 1024;
@@ -48,11 +50,11 @@ namespace
 
     // Light color
     glm::vec3 gLightColor1(1.0f, 1.0f, 1.0f);
-    //glm::vec3 gLightColor2(1.0f, 1.0f, 1.0f);
+    glm::vec3 gLightColor2(1.0f, 0.0f, 0.0f);
 
     // Light position
     glm::vec3 gLightPositionKey(1.5f, 3.0f, 3.0f);
-    //glm::vec3 gLightPositionFill(-1.5f, 0.5f, -1.0f);
+    glm::vec3 gLightPositionFill(-1.5f, 1.0f, 1.0f);
     glm::vec3 gLightScale(0.1f);
 
     bool gIsLampOrbiting = true;
@@ -65,7 +67,7 @@ void processInput(GLFWwindow* window);
 void toggleInput(GLFWwindow* window, int key, int scancode, int action, int mods);
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
-void URenderLight(Mesh& Mesh, Shader newLightShader);
+void URenderLight(Mesh& Mesh, Shader newLightShader, glm::vec3 lightPos);
 void URender(Mesh& Mesh, Shader newShader, GLfloat _scale, GLfloat deg, GLfloat rotX, GLfloat rotY, GLfloat rotZ, GLfloat translX, GLfloat translY, GLfloat translZ);
 static Mesh drawCylinder(GLfloat height, GLfloat radius, int numSlices);
 static Mesh drawPyramid();
@@ -127,12 +129,15 @@ int main(int argc, char* argv[])
         glClearColor(0.0f, 0.3f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        // Draw cube on back buffer, and manage obj matrices
         URender(box, newShader, 1.2f, -40.0f, 0.0f, 1.0f, 0.0f, -0.5f, 0.0f, -0.1f);
         box.Draw(newShader, crackerBox);
 
+        // Draw cylinder for soda can body on back buffer, and manage obj matrices
         URender(cylCan, newShader, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.2f, 0.0f, 0.0f);
         cylCan.Draw(newShader, sodaCanBody);
 
+        // Draw cylinder for soda can lid on back buffer, and manage obj matrices
         URender(cylCanLid, newShader, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.2f, 1.0f, 0.0f);
         cylCanLid.Draw(newShader, sodaCanTop);
 
@@ -148,10 +153,14 @@ int main(int argc, char* argv[])
         URender(floor, newShader, 6.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f);
         floor.Draw(newShader, planeFloor);
 
-        // Draws the light source in the shape of a plane
-        URenderLight(pyramid, newLightShader);
+        // Draws the light source
+        URenderLight(pyramid, newLightShader, gLightPositionKey);
         pyramid.Draw(newLightShader, penHead);
-        
+
+        // Draws the second light source
+        URenderLight(pyramid, newLightShader, gLightPositionFill);
+        pyramid.Draw(newLightShader, penHead);
+
         // Swaps front buffer with back buffer 
         glfwSwapBuffers(gWindow);
 
@@ -166,6 +175,9 @@ int main(int argc, char* argv[])
     penHead.Delete();
     penBody.Delete();
     planeFloor.Delete();
+    sodaCanBody.Delete();
+    sodaCanTop.Delete();
+    crackerBox.Delete();
 
     // Terminates the program successfully
     exit(EXIT_SUCCESS);
@@ -284,11 +296,12 @@ void UResizeWindow(GLFWwindow* window, int width, int height)
 }
 
 
-
+// FIXME: Refactor code into current classes, perhaps into the Mesh class
 // Functioned called to render a frame
 // ___________________________________
 void URender(Mesh& Mesh, Shader newShader, GLfloat _scale, GLfloat deg, GLfloat rotX, GLfloat rotY, GLfloat rotZ, GLfloat translX, GLfloat translY, GLfloat translZ)
 {
+    // Rotates main light source
     const float angularVelocity = glm::radians(5.0f);
     if (gIsLampOrbiting)
     {
@@ -297,8 +310,6 @@ void URender(Mesh& Mesh, Shader newShader, GLfloat _scale, GLfloat deg, GLfloat 
         gLightPositionKey.y = newPosition.y;
         gLightPositionKey.z = newPosition.z;
     }
-    
-    
     
     // Model matrix
     // ------------
@@ -349,20 +360,21 @@ void URender(Mesh& Mesh, Shader newShader, GLfloat _scale, GLfloat deg, GLfloat 
     GLint viewPositionLoc = glGetUniformLocation(newShader.ID, "viewPosition");
 
     glUniform3f(lightColorLoc, gLightColor1.r, gLightColor1.g, gLightColor1.b);
-    //glUniform3f(lightColorFillLoc, gLightColor2.r, gLightColor2.g, gLightColor2.b);
+    glUniform3f(lightColorFillLoc, gLightColor2.r, gLightColor2.g, gLightColor2.b);
     glUniform3f(lightPositionLoc, gLightPositionKey.x, gLightPositionKey.y, gLightPositionKey.z);
-    //glUniform3f(lightPositionFillLoc, gLightPositionFill.x, gLightPositionFill.y, gLightPositionFill.z);
+    glUniform3f(lightPositionFillLoc, gLightPositionFill.x, gLightPositionFill.y, gLightPositionFill.z);
     glUniform3f(viewPositionLoc, cameraPos.x, cameraPos.y, cameraPos.z);
 }
 
 
 
-void URenderLight(Mesh& Mesh, Shader newLightShader)
+// Renders a physical light object
+void URenderLight(Mesh& Mesh, Shader newLightShader, glm::vec3 lightPos)
 {
     glUseProgram(newLightShader.ID);
 
     //Transform the smaller cube used as a visual que for the light source
-    glm::mat4 model = glm::translate(gLightPositionKey) * glm::scale(gLightScale);
+    glm::mat4 model = glm::translate(lightPos) * glm::scale(gLightScale);
 
     glm::mat4 view = glm::mat4(1.0f);
     view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
@@ -425,40 +437,40 @@ static Mesh drawCube()
     std::vector<Vertex> verts =
     {
                     // Position                         // Normals              // Texture               // Bottom face
-        Vertex{glm::vec3(-0.2f, 0.0f,  1.0f), glm::vec3( 0.0f, -1.0f,  0.0f), glm::vec2(0.6f, 0.2f)},     // Bottom Front left corner
-        Vertex{glm::vec3( 0.2f, 0.0f,  1.0f), glm::vec3( 0.0f, -1.0f,  0.0f), glm::vec2(0.5f, 0.2f)},     // Bottom Front right corner
-        Vertex{glm::vec3(-0.2f, 0.0f, -1.0f), glm::vec3( 0.0f, -1.0f,  0.0f), glm::vec2(0.6f, 0.8f)},     // Bottom Back left corner
-        Vertex{glm::vec3( 0.2f, 0.0f, -1.0f), glm::vec3( 0.0f, -1.0f,  0.0f), glm::vec2(0.5f, 0.8f)},     // Bottom Back right corner
+        Vertex{glm::vec3(-0.2f, 0.0f,  1.0f), glm::vec3( 0.0f, -1.0f,  0.0f), glm::vec2(0.67f, 0.23f)},     // Bottom Front left corner
+        Vertex{glm::vec3( 0.2f, 0.0f,  1.0f), glm::vec3( 0.0f, -1.0f,  0.0f), glm::vec2(0.5f, 0.23f)},     // Bottom Front right corner
+        Vertex{glm::vec3(-0.2f, 0.0f, -1.0f), glm::vec3( 0.0f, -1.0f,  0.0f), glm::vec2(0.67f, 0.77f)},     // Bottom Back left corner
+        Vertex{glm::vec3( 0.2f, 0.0f, -1.0f), glm::vec3( 0.0f, -1.0f,  0.0f), glm::vec2(0.5f, 0.77f)},     // Bottom Back right corner
                                        
                                                                                                          // Left face
-        Vertex{glm::vec3(-0.2f, 0.0f,  1.0f), glm::vec3(-1.0f,  0.0f,  0.0f), glm::vec2(0.6f, 0.2f)},     // Bottom Front left corner
-        Vertex{glm::vec3(-0.2f, 0.0f, -1.0f), glm::vec3(-1.0f,  0.0f,  0.0f), glm::vec2(0.6f, 0.8f)},     // Bottom Back left corner
-        Vertex{glm::vec3(-0.2f, 1.0f, -1.0f), glm::vec3(-1.0f,  0.0f,  0.0f), glm::vec2(1.0f, 0.8f)},     // Top Back left corner
-        Vertex{glm::vec3(-0.2f, 1.0f,  1.0f), glm::vec3(-1.0f,  0.0f,  0.0f), glm::vec2(1.0f, 0.2f)},     // Top Front left corner
+        Vertex{glm::vec3(-0.2f, 0.0f,  1.0f), glm::vec3(-1.0f,  0.0f,  0.0f), glm::vec2(0.67f, 0.23f)},     // Bottom Front left corner
+        Vertex{glm::vec3(-0.2f, 0.0f, -1.0f), glm::vec3(-1.0f,  0.0f,  0.0f), glm::vec2(0.67f, 0.77f)},     // Bottom Back left corner
+        Vertex{glm::vec3(-0.2f, 1.0f, -1.0f), glm::vec3(-1.0f,  0.0f,  0.0f), glm::vec2(1.0f, 0.77f)},     // Top Back left corner
+        Vertex{glm::vec3(-0.2f, 1.0f,  1.0f), glm::vec3(-1.0f,  0.0f,  0.0f), glm::vec2(1.0f, 0.23f)},     // Top Front left corner
                                        
                                                                                                         // Right face
-        Vertex{glm::vec3( 0.2f, 1.0f,  1.0f), glm::vec3( 1.0f,  0.0f,  0.0f), glm::vec2(0.2f, 0.2f)},     // Top Front right corner
-        Vertex{glm::vec3( 0.2f, 1.0f, -1.0f), glm::vec3( 1.0f,  0.0f,  0.0f), glm::vec2(0.2f, 0.8f)},     // Top Back right corner
-        Vertex{glm::vec3( 0.2f, 0.0f,  1.0f), glm::vec3( 1.0f,  0.0f,  0.0f), glm::vec2(0.5f, 0.2f)},     // Bottom Front right corner
-        Vertex{glm::vec3( 0.2f, 0.0f, -1.0f), glm::vec3( 1.0f,  0.0f,  0.0f), glm::vec2(0.5f, 0.8f)},     // Bottom Back right corner
+        Vertex{glm::vec3( 0.2f, 1.0f,  1.0f), glm::vec3( 1.0f,  0.0f,  0.0f), glm::vec2(0.17f, 0.23f)},     // Top Front right corner
+        Vertex{glm::vec3( 0.2f, 1.0f, -1.0f), glm::vec3( 1.0f,  0.0f,  0.0f), glm::vec2(0.17f, 0.77f)},     // Top Back right corner
+        Vertex{glm::vec3( 0.2f, 0.0f,  1.0f), glm::vec3( 1.0f,  0.0f,  0.0f), glm::vec2(0.5f, 0.23f)},     // Bottom Front right corner
+        Vertex{glm::vec3( 0.2f, 0.0f, -1.0f), glm::vec3( 1.0f,  0.0f,  0.0f), glm::vec2(0.5f, 0.77f)},     // Bottom Back right corner
                                        
                                                                                                         // Front face
         Vertex{glm::vec3(-0.2f, 0.0f,  1.0f), glm::vec3( 0.0f,  0.0f,  1.0f), glm::vec2(0.5f, 0.0f)},     // Bottom Front left corner
-        Vertex{glm::vec3( 0.2f, 0.0f,  1.0f), glm::vec3( 0.0f,  0.0f,  1.0f), glm::vec2(0.5f, 0.2f)},     // Bottom Front right corner
-        Vertex{glm::vec3(-0.2f, 1.0f,  1.0f), glm::vec3( 0.0f,  0.0f,  1.0f), glm::vec2(0.2f, 0.0f)},     // Top Front left corner
-        Vertex{glm::vec3( 0.2f, 1.0f,  1.0f), glm::vec3( 0.0f,  0.0f,  1.0f), glm::vec2(0.2f, 0.2f)},     // Top Front right corner
+        Vertex{glm::vec3( 0.2f, 0.0f,  1.0f), glm::vec3( 0.0f,  0.0f,  1.0f), glm::vec2(0.5f, 0.23f)},     // Bottom Front right corner
+        Vertex{glm::vec3(-0.2f, 1.0f,  1.0f), glm::vec3( 0.0f,  0.0f,  1.0f), glm::vec2(0.17f, 0.0f)},     // Top Front left corner
+        Vertex{glm::vec3( 0.2f, 1.0f,  1.0f), glm::vec3( 0.0f,  0.0f,  1.0f), glm::vec2(0.17f, 0.23f)},     // Top Front right corner
                                        
                                                                                                         // Back face
-        Vertex{glm::vec3( 0.2f, 0.0f, -1.0f), glm::vec3( 0.0f,  0.0f, -1.0f), glm::vec2(0.5f, 0.8f)},     // Bottom Back right corner
+        Vertex{glm::vec3( 0.2f, 0.0f, -1.0f), glm::vec3( 0.0f,  0.0f, -1.0f), glm::vec2(0.5f, 0.77f)},     // Bottom Back right corner
         Vertex{glm::vec3(-0.2f, 0.0f, -1.0f), glm::vec3( 0.0f,  0.0f, -1.0f), glm::vec2(0.5f, 1.0f)},     // Bottom Back left corner
-        Vertex{glm::vec3( 0.2f, 1.0f, -1.0f), glm::vec3( 0.0f,  0.0f, -1.0f), glm::vec2(0.2f, 0.8f)},     // Top Back right corner
-        Vertex{glm::vec3(-0.2f, 1.0f, -1.0f), glm::vec3( 0.0f,  0.0f, -1.0f), glm::vec2(0.2f, 1.0f)},     // Top Front left corner
+        Vertex{glm::vec3( 0.2f, 1.0f, -1.0f), glm::vec3( 0.0f,  0.0f, -1.0f), glm::vec2(0.17f, 0.77f)},     // Top Back right corner
+        Vertex{glm::vec3(-0.2f, 1.0f, -1.0f), glm::vec3( 0.0f,  0.0f, -1.0f), glm::vec2(0.17f, 1.0f)},     // Top Front left corner
                                        
                                                                                                         // Top face
-        Vertex{glm::vec3(-0.2f, 1.0f,  1.0f), glm::vec3( 0.0f,  1.0f,  0.0f), glm::vec2(0.0f, 0.2f)},     // Top Front left corner
-        Vertex{glm::vec3( 0.2f, 1.0f,  1.0f), glm::vec3( 0.0f,  1.0f,  0.0f), glm::vec2(0.2f, 0.2f)},     // Top Front right corner
-        Vertex{glm::vec3(-0.2f, 1.0f, -1.0f), glm::vec3( 0.0f,  1.0f,  0.0f), glm::vec2(0.0f, 0.8f)},     // Top Back left corner
-        Vertex{glm::vec3( 0.2f, 1.0f, -1.0f), glm::vec3( 0.0f,  1.0f,  0.0f), glm::vec2(0.2f, 0.8f)},     // Top Back right corner
+        Vertex{glm::vec3(-0.2f, 1.0f,  1.0f), glm::vec3( 0.0f,  1.0f,  0.0f), glm::vec2(0.0f, 0.23f)},     // Top Front left corner
+        Vertex{glm::vec3( 0.2f, 1.0f,  1.0f), glm::vec3( 0.0f,  1.0f,  0.0f), glm::vec2(0.17f, 0.23f)},     // Top Front right corner
+        Vertex{glm::vec3(-0.2f, 1.0f, -1.0f), glm::vec3( 0.0f,  1.0f,  0.0f), glm::vec2(0.0f, 0.77f)},     // Top Back left corner
+        Vertex{glm::vec3( 0.2f, 1.0f, -1.0f), glm::vec3( 0.0f,  1.0f,  0.0f), glm::vec2(0.17f, 0.77f)},     // Top Back right corner
     };
 
     std::vector<GLuint> indices =

@@ -25,7 +25,7 @@ void main()
     // Calculate phong lighting model for light object positions
     vec3 phong = calcPhongLight(lightPos, lightColor, 0.1f);
     // Second light position calculation
-    // phong += calcPhongLight(lightPosFill, lightColorFill, 0.1f);
+    phong += calcPhongLight(lightPosFill, lightColorFill, 0.1f);
 
     fragmentColor = vec4(phong, 1.0); // Send lighting results to GPU
 }
